@@ -77,7 +77,10 @@ export function LoanDetailView() {
   }, [selectedLoanId]);
 
   useEffect(() => {
-    fetchLoan();
+    const timer = setTimeout(() => {
+      fetchLoan();
+    }, 0);
+    return () => clearTimeout(timer);
   }, [fetchLoan]);
 
   if (loading) {

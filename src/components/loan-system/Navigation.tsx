@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 
 const tabs = [
@@ -26,6 +26,12 @@ export function BottomNav() {
   const [newPwd, setNewPwd] = useState('');
   const [confirmPwd, setConfirmPwd] = useState('');
   const [changing, setChanging] = useState(false);
+
+  useEffect(() => {
+    const handleOpenSettings = () => setSettingsOpen(true);
+    window.addEventListener('open-settings-dialog', handleOpenSettings);
+    return () => window.removeEventListener('open-settings-dialog', handleOpenSettings);
+  }, []);
 
   if (!showNav) return null;
 
@@ -50,7 +56,7 @@ export function BottomNav() {
 
   return (
     <>
-      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-surface-elevated/95 backdrop-blur-xl border-t border-border">
+      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-surface-elevated/95 backdrop-blur-xl border-t border-border md:hidden">
         <div className="max-w-lg mx-auto flex items-center justify-around h-16 px-2">
           {allTabs.map((tab) => {
             const isActive = currentView === tab.id;

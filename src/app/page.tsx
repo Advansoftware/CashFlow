@@ -105,7 +105,7 @@ export default function Home() {
 
       {/* Header */}
       <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-xl border-b border-border">
-        <div className="max-w-lg mx-auto flex items-center justify-between h-14 px-4">
+        <div className="max-w-5xl mx-auto flex items-center justify-between h-14 px-4 w-full">
           <div className="flex items-center gap-2.5">
             {showBack && (
               <button
@@ -123,15 +123,63 @@ export default function Home() {
               </div>
               <span className="text-base font-bold text-foreground tracking-tight">TamoQuite</span>
             </div>
+
+            {/* Desktop Navigation */}
+            <nav className="hidden md:flex items-center gap-6 ml-8">
+              <button
+                onClick={() => useAppStore.getState().setView('dashboard')}
+                className={`text-sm font-medium transition-colors cursor-pointer ${
+                  currentView === 'dashboard' ? 'text-neon font-semibold' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Painel
+              </button>
+              <button
+                onClick={() => useAppStore.getState().setView('borrowers')}
+                className={`text-sm font-medium transition-colors cursor-pointer ${
+                  currentView === 'borrowers' ? 'text-neon font-semibold' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Pessoas
+              </button>
+              <button
+                onClick={() => useAppStore.getState().setView('loans')}
+                className={`text-sm font-medium transition-colors cursor-pointer ${
+                  currentView === 'loans' ? 'text-neon font-semibold' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Empréstimos
+              </button>
+              {user?.role === 'ADMIN' && (
+                <button
+                  onClick={() => useAppStore.getState().setView('admin')}
+                  className={`text-sm font-medium transition-colors cursor-pointer ${
+                    currentView === 'admin' || currentView === 'admin-user-dashboard' ? 'text-neon font-semibold' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Admin
+                </button>
+              )}
+            </nav>
           </div>
-          <span className="text-xs text-muted-foreground truncate max-w-[140px]">
-            {user.name}
-          </span>
+
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-muted-foreground truncate max-w-[140px] hidden sm:inline">
+              {user.name}
+            </span>
+            {/* Profile Button for Desktop */}
+            <button
+              onClick={() => window.dispatchEvent(new Event('open-settings-dialog'))}
+              className="hidden md:flex w-8 h-8 rounded-full bg-neon-dim border border-neon/20 items-center justify-center text-neon text-xs font-bold hover:bg-neon/20 transition-all cursor-pointer"
+            >
+              {user.name?.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase() || 'U'}
+            </button>
+          </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 max-w-lg mx-auto w-full px-4 pt-4 pb-24">
+      <main className="flex-1 max-w-5xl mx-auto w-full px-4 pt-4 pb-24 md:px-6">
         {currentView === 'dashboard' && <DashboardView />}
         {currentView === 'borrowers' && <BorrowersView />}
         {currentView === 'loans' && <LoansView />}

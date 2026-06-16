@@ -45,7 +45,10 @@ export function BorrowersView() {
   }, []);
 
   useEffect(() => {
-    fetchBorrowers();
+    const timer = setTimeout(() => {
+      fetchBorrowers();
+    }, 0);
+    return () => clearTimeout(timer);
   }, [fetchBorrowers, refreshKey]);
 
   const filtered = borrowers.filter((b) =>
@@ -160,7 +163,7 @@ export function BorrowersView() {
           </p>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {filtered.map((b) => (
             <div
               key={b.id}

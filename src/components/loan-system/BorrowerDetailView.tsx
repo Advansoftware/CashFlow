@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { CreateLoanDialog } from './CreateLoanDialog';
 
 interface BorrowerDetail {
   id: string;
@@ -38,13 +39,6 @@ export function BorrowerDetailView() {
   const [borrower, setBorrower] = useState<BorrowerDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [createLoanOpen, setCreateLoanOpen] = useState(false);
-  const [form, setForm] = useState({
-    originalAmount: '',
-    interestRate: '',
-    installmentCount: '',
-    startDate: new Date().toISOString().split('T')[0],
-  });
-  const [submitting, setSubmitting] = useState(false);
 
   const fetchBorrower = useCallback(async () => {
     if (!selectedBorrowerId) return;
@@ -61,7 +55,10 @@ export function BorrowerDetailView() {
   }, [selectedBorrowerId]);
 
   useEffect(() => {
-    fetchBorrower();
+    const timer = setTimeout(() => {
+      fetchBorrower();
+    }, 0);
+    return () => clearTimeout(timer);
   }, [fetchBorrower, refreshKey]);
 
   if (loading) {
@@ -80,29 +77,7 @@ export function BorrowerDetailView() {
     0
   );
 
-  const handleCreateLoan = async () => {
-    const { originalAmount, interestRate, installmentCount, startDate } = form;
-    if (!originalAmount || !interestRate || !installmentCount || !startDate) return;
-    setSubmitting(true);
-    try {
-      const res = await apiPost('/api/loans', {
-          borrowerId: borrower.id,
-          originalAmount: parseFloat(originalAmount),
-          interestRate: parseFloat(interestRate),
-          installmentCount: parseInt(installmentCount),
-          startDate,
-        });
-      const errMsg = await getApiError(res);
-      if (errMsg) { toast.error(errMsg); return; }
-      setCreateLoanOpen(false);
-      useAppStore.getState().triggerRefresh();
-      fetchBorrower();
-    } catch {
-      toast.error('Erro de conexão com o servidor');
-    } finally {
-      setSubmitting(false);
-    }
-  };
+
 
   return (
     <div className="space-y-4 pb-6">
@@ -155,15 +130,9 @@ export function BorrowerDetailView() {
           </h3>
           <button
             onClick={() => {
-              setForm({
-                originalAmount: '',
-                interestRate: '',
-                installmentCount: '',
-                startDate: new Date().toISOString().split('T')[0],
-              });
               setCreateLoanOpen(true);
             }}
-            className="flex items-center gap-1 text-xs text-neon font-medium hover:underline"
+            className="flex items-center gap-1 text-xs text-neon font-medium hover:underline cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             Novo
@@ -217,93 +186,14 @@ export function BorrowerDetailView() {
       </div>
 
       {/* Create Loan Dialog */}
-      <Dialog open={createLoanOpen} onOpenChange={setCreateLoanOpen}>
-        <DialogContent className="bg-surface border-border text-foreground sm:max-w-md rounded-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-bold">Novo Empréstimo</DialogTitle>
-            <DialogDescription className="text-muted-foreground">Para {borrower.name}</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Valor Original (R$) *</label>
-              <Input
-                type="number"
-                step="0.01"
-                placeholder="Ex: 5000"
-                value={form.originalAmount}
-                onChange={(e) => setForm({ ...form, originalAmount: e.target.value })}
-                className="bg-surface-elevated border-border text-foreground placeholder:text-muted-foreground rounded-xl h-11"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Taxa de Juros (% a.m.) *</label>
-              <Input
-                type="number"
-                step="0.01"
-                placeholder="Ex: 2.5"
-                value={form.interestRate}
-                onChange={(e) => setForm({ ...form, interestRate: e.target.value })}
-                className="bg-surface-elevated border-border text-foreground placeholder:text-muted-foreground rounded-xl h-11"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Número de Parcelas *</label>
-              <Select value={form.installmentCount} onValueChange={(v) => setForm({ ...form, installmentCount: v })}>
-                <SelectTrigger className="bg-surface-elevated border-border text-foreground rounded-xl h-11">
-                  <SelectValue placeholder="Selecione" />
-                </SelectTrigger>
-                <SelectContent className="bg-surface-elevated border-border">
-                  {[2, 3, 4, 5, 6, 8, 10, 12, 18, 24, 36].map((n) => (
-                    <SelectItem key={n} value={String(n)} className="text-foreground">{n} parcelas</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Data de Início *</label>
-              <Input
-                type="date"
-                value={form.startDate}
-                onChange={(e) => setForm({ ...form, startDate: e.target.value })}
-                className="bg-surface-elevated border-border text-foreground placeholder:text-muted-foreground rounded-xl h-11"
-              />
-            </div>
-            {form.originalAmount && form.interestRate && form.installmentCount && (
-              <div className="bg-neon-dim rounded-xl p-4 border border-neon/20">
-                <p className="text-xs text-neon font-medium mb-2">💰 Prévia</p>
-                <div className="flex justify-between">
-                  <span className="text-xs text-muted-foreground">Valor/parcela</span>
-                  <span className="text-xs text-neon font-bold">
-                    {(() => {
-                      const P = parseFloat(form.originalAmount);
-                      const r = parseFloat(form.interestRate) / 100;
-                      const n = parseInt(form.installmentCount);
-                      if (!P || !r || !n) return '—';
-                      return formatCurrency(P * r * Math.pow(1 + r, n) / (Math.pow(1 + r, n) - 1));
-                    })()}
-                  </span>
-                </div>
-              </div>
-            )}
-          </div>
-          <DialogFooter className="gap-2">
-            <Button
-              variant="secondary"
-              onClick={() => setCreateLoanOpen(false)}
-              className="bg-surface-elevated text-foreground hover:bg-secondary rounded-xl flex-1"
-            >
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleCreateLoan}
-              disabled={submitting || !form.originalAmount || !form.interestRate || !form.installmentCount}
-              className="bg-neon text-background hover:bg-neon/90 font-semibold rounded-xl flex-1"
-            >
-              {submitting ? 'Criando...' : 'Criar'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Create Loan Dialog */}
+      <CreateLoanDialog
+        open={createLoanOpen}
+        onOpenChange={setCreateLoanOpen}
+        fixedBorrowerId={borrower.id}
+        fixedBorrowerName={borrower.name}
+        onSuccess={fetchBorrower}
+      />
     </div>
   );
 }

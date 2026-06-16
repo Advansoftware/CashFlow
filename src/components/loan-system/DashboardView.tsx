@@ -64,7 +64,10 @@ export function DashboardView() {
   }, []);
 
   useEffect(() => {
-    fetchDashboard();
+    const timer = setTimeout(() => {
+      fetchDashboard();
+    }, 0);
+    return () => clearTimeout(timer);
   }, [fetchDashboard, refreshKey]);
 
   if (loading) {
@@ -100,7 +103,7 @@ export function DashboardView() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
         <div className="bg-surface rounded-2xl p-4 border border-border card-hover">
           <div className="flex items-center gap-2 mb-2">
             <div className="w-8 h-8 rounded-lg bg-neon-dim flex items-center justify-center">
@@ -162,139 +165,146 @@ export function DashboardView() {
         </div>
       )}
 
-      {/* Overdue Section */}
-      {data.overdueInstallments.length > 0 && (
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-danger" />
-            <h3 className="text-sm font-semibold text-danger">Parcelas Atrasadas</h3>
-            <span className="text-xs bg-danger/10 text-danger px-2 py-0.5 rounded-full font-medium">
-              {data.overdueInstallments.length}
-            </span>
-          </div>
-          <div className="space-y-2">
-            {data.overdueInstallments.map((inst) => {
-              const days = getDaysUntil(inst.dueDate);
-              const message = generateChargeMessage(inst.borrowerName, inst.amount, inst.dueDate);
-              const waLink = generateWhatsAppLink(inst.borrowerWhatsapp, message);
-              return (
-                <div
-                  key={inst.id}
-                  className="bg-surface rounded-xl p-4 border border-danger/20 card-hover"
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-foreground truncate">{inst.borrowerName}</p>
-                      <p className="text-xs text-danger font-medium">{getDaysLabel(days)}</p>
-                    </div>
-                    <span className="text-xs px-2 py-0.5 rounded-full border bg-danger/10 text-danger border-danger/20 font-medium whitespace-nowrap ml-2">
-                      {getStatusLabel(inst.status)}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <p className="text-base font-bold text-foreground">{formatCurrency(inst.amount)}</p>
-                    <a
-                      href={waLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#25D366] rounded-lg text-xs font-medium transition-colors"
-                    >
-                      <MessageCircle className="w-3.5 h-3.5" />
-                      Cobrar
-                    </a>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Upcoming */}
-      {data.upcomingInstallments.length > 0 && (
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-neon" />
-            <h3 className="text-sm font-semibold text-foreground">Próximos Vencimentos</h3>
-          </div>
-          <div className="space-y-2">
-            {data.upcomingInstallments.map((inst) => {
-              const days = getDaysUntil(inst.dueDate);
-              const message = generateChargeMessage(inst.borrowerName, inst.amount, inst.dueDate);
-              const waLink = generateWhatsAppLink(inst.borrowerWhatsapp, message);
-              return (
-                <div
-                  key={inst.id}
-                  className="bg-surface rounded-xl p-4 border border-border card-hover"
-                  onClick={() => selectLoan(inst.loanId)}
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-foreground truncate">{inst.borrowerName}</p>
-                      <p className="text-xs text-muted-foreground">{getDaysLabel(days)} · {formatDateShort(inst.dueDate)}</p>
-                    </div>
-                    <span className={`text-xs px-2 py-0.5 rounded-full border font-medium whitespace-nowrap ml-2 ${getStatusBgColor(inst.status)}`}>
-                      {getStatusLabel(inst.status)}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <p className="text-base font-bold text-foreground">{formatCurrency(inst.amount)}</p>
-                    <a
-                      href={waLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#25D366] rounded-lg text-xs font-medium transition-colors"
-                    >
-                      <MessageCircle className="w-3.5 h-3.5" />
-                      Cobrar
-                    </a>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Recent Loans */}
-      {data.recentLoans.length > 0 && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-foreground">Empréstimos Recentes</h3>
-            <button
-              onClick={() => useAppStore.getState().setView('loans')}
-              className="flex items-center gap-1 text-xs text-neon hover:underline"
-            >
-              Ver todos <ArrowRight className="w-3 h-3" />
-            </button>
-          </div>
-          <div className="space-y-2">
-            {data.recentLoans.map((loan) => (
-              <div
-                key={loan.id}
-                className="bg-surface rounded-xl p-4 border border-border card-hover"
-                onClick={() => selectLoan(loan.id)}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-foreground truncate">{loan.borrower.name}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {loan._count.installments} parcelas · {formatCurrency(loan.originalAmount)}
-                    </p>
-                  </div>
-                  <div className="text-right ml-3">
-                    <p className="text-sm font-bold text-foreground">{formatCurrency(loan.totalAmount)}</p>
-                    <p className={`text-xs font-medium ${loan.status === 'ACTIVE' ? 'text-neon' : 'text-muted-foreground'}`}>
-                      {loan.status === 'ACTIVE' ? 'Ativo' : 'Finalizado'}
-                    </p>
-                  </div>
-                </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Left Column: Overdue and Upcoming */}
+        <div className="space-y-6">
+          {/* Overdue Section */}
+          {data.overdueInstallments.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-danger" />
+                <h3 className="text-sm font-semibold text-danger">Parcelas Atrasadas</h3>
+                <span className="text-xs bg-danger/10 text-danger px-2 py-0.5 rounded-full font-medium">
+                  {data.overdueInstallments.length}
+                </span>
               </div>
-            ))}
-          </div>
+              <div className="space-y-2">
+                {data.overdueInstallments.map((inst) => {
+                  const days = getDaysUntil(inst.dueDate);
+                  const message = generateChargeMessage(inst.borrowerName, inst.amount, inst.dueDate);
+                  const waLink = generateWhatsAppLink(inst.borrowerWhatsapp, message);
+                  return (
+                    <div
+                      key={inst.id}
+                      className="bg-surface rounded-xl p-4 border border-danger/20 card-hover"
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-foreground truncate">{inst.borrowerName}</p>
+                          <p className="text-xs text-danger font-medium">{getDaysLabel(days)}</p>
+                        </div>
+                        <span className="text-xs px-2 py-0.5 rounded-full border bg-danger/10 text-danger border-danger/20 font-medium whitespace-nowrap ml-2">
+                          {getStatusLabel(inst.status)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <p className="text-base font-bold text-foreground">{formatCurrency(inst.amount)}</p>
+                        <a
+                          href={waLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#25D366] rounded-lg text-xs font-medium transition-colors"
+                        >
+                          <MessageCircle className="w-3.5 h-3.5" />
+                          Cobrar
+                        </a>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Upcoming */}
+          {data.upcomingInstallments.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-neon" />
+                <h3 className="text-sm font-semibold text-foreground">Próximos Vencimentos</h3>
+              </div>
+              <div className="space-y-2">
+                {data.upcomingInstallments.map((inst) => {
+                  const days = getDaysUntil(inst.dueDate);
+                  const message = generateChargeMessage(inst.borrowerName, inst.amount, inst.dueDate);
+                  const waLink = generateWhatsAppLink(inst.borrowerWhatsapp, message);
+                  return (
+                    <div
+                      key={inst.id}
+                      className="bg-surface rounded-xl p-4 border border-border card-hover cursor-pointer"
+                      onClick={() => selectLoan(inst.loanId)}
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-foreground truncate">{inst.borrowerName}</p>
+                          <p className="text-xs text-muted-foreground">{getDaysLabel(days)} · {formatDateShort(inst.dueDate)}</p>
+                        </div>
+                        <span className={`text-xs px-2 py-0.5 rounded-full border font-medium whitespace-nowrap ml-2 ${getStatusBgColor(inst.status)}`}>
+                          {getStatusLabel(inst.status)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <p className="text-base font-bold text-foreground">{formatCurrency(inst.amount)}</p>
+                        <a
+                          href={waLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#25D366] rounded-lg text-xs font-medium transition-colors"
+                        >
+                          <MessageCircle className="w-3.5 h-3.5" />
+                          Cobrar
+                        </a>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
-      )}
+
+        {/* Right Column: Recent Loans */}
+        <div className="space-y-6">
+          {data.recentLoans.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-foreground">Empréstimos Recentes</h3>
+                <button
+                  onClick={() => useAppStore.getState().setView('loans')}
+                  className="flex items-center gap-1 text-xs text-neon hover:underline cursor-pointer"
+                >
+                  Ver todos <ArrowRight className="w-3 h-3" />
+                </button>
+              </div>
+              <div className="space-y-2">
+                {data.recentLoans.map((loan) => (
+                  <div
+                    key={loan.id}
+                    className="bg-surface rounded-xl p-4 border border-border card-hover cursor-pointer"
+                    onClick={() => selectLoan(loan.id)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-foreground truncate">{loan.borrower.name}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {loan._count.installments} parcelas · {formatCurrency(loan.originalAmount)}
+                        </p>
+                      </div>
+                      <div className="text-right ml-3">
+                        <p className="text-sm font-bold text-foreground">{formatCurrency(loan.totalAmount)}</p>
+                        <p className={`text-xs font-medium ${loan.status === 'ACTIVE' ? 'text-neon' : 'text-muted-foreground'}`}>
+                          {loan.status === 'ACTIVE' ? 'Ativo' : 'Finalizado'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Empty State */}
       {data.totalMonthly === 0 && data.overdueInstallments.length === 0 && data.recentLoans.length === 0 && (

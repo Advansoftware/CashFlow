@@ -39,7 +39,12 @@ export function AdminView() {
     setLoading(false);
   }, []);
 
-  useEffect(() => { fetchUsers(); }, [fetchUsers]);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchUsers();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [fetchUsers]);
 
   const handleCreate = async () => {
     if (!form.email || !form.name || !form.password) return;
@@ -96,7 +101,7 @@ export function AdminView() {
           <div className="w-8 h-8 border-2 border-neon/30 border-t-neon rounded-full animate-spin" />
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {users.map((u) => (
             <div key={u.id} className="bg-surface rounded-xl p-4 border border-border card-hover">
               <div className="flex items-center gap-3">
