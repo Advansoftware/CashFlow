@@ -90,6 +90,7 @@ export function BorrowerDetailView() {
     .flatMap((l) => l.installments.map((i) => ({ ...i, loanId: l.id })))
     .filter((i) => i.status === 'OVERDUE');
   const hasOverdue = overdueInstallments.length > 0;
+  const totalOverdue = overdueInstallments.reduce((sum, i) => sum + (i.amount - (i.paidAmount || 0)), 0);
 
 
 
@@ -124,7 +125,7 @@ export function BorrowerDetailView() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         <div className="bg-surface rounded-xl p-3 border border-border text-center">
           <p className="text-[10px] text-muted-foreground mb-0.5">Total Emprestado</p>
           <p className="text-xs font-bold text-foreground truncate">{formatCurrency(totalLent)}</p>
@@ -136,6 +137,10 @@ export function BorrowerDetailView() {
         <div className="bg-surface rounded-xl p-3 border border-border text-center">
           <p className="text-[10px] text-muted-foreground mb-0.5">Saldo Devedor</p>
           <p className="text-xs font-bold text-warning truncate">{formatCurrency(totalRemaining)}</p>
+        </div>
+        <div className="bg-surface rounded-xl p-3 border border-border text-center">
+          <p className="text-[10px] text-muted-foreground mb-0.5">Saldo em Atraso</p>
+          <p className="text-xs font-bold text-danger truncate">{formatCurrency(totalOverdue)}</p>
         </div>
       </div>
 
@@ -292,7 +297,7 @@ export function BorrowerDetailView() {
                   <div className="space-y-1 mt-2">
                     <div className="flex justify-between text-[10px] text-muted-foreground">
                       <span>Progresso</span>
-                      <span>{paidCount}/{loan.installmentCount} parcelas quitadas</span>
+                      <span>{paidCount}/{loan.installments.length} parcelas quitadas</span>
                     </div>
                     <div className="w-full h-1.5 bg-secondary rounded-full overflow-hidden">
                       <div

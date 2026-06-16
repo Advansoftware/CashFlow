@@ -69,6 +69,12 @@ export async function POST(
       where: { id },
     });
 
+    // 4. Garantir que o empréstimo volte para o status ACTIVE
+    await db.loan.update({
+      where: { id: interestInstallment.loanId },
+      data: { status: 'ACTIVE' },
+    });
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error in undo-roll:', error);
