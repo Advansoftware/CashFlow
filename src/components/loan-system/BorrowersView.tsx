@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useAppStore } from '@/lib/store';
+import { apiFetch, apiPost, apiPut, apiDelete } from '@/lib/api';
 import { formatPhone, formatCurrency, formatDate } from '@/lib/helpers';
 import { Plus, Search, Phone, Trash2, User, ChevronRight, MessageCircle } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -32,7 +33,7 @@ export function BorrowersView() {
 
   const fetchBorrowers = useCallback(async () => {
     try {
-      const res = await fetch('/api/borrowers');
+      const res = await apiFetch('/api/borrowers');
       const json = await res.json();
       setBorrowers(json);
     } catch (err) {
@@ -71,11 +72,7 @@ export function BorrowersView() {
     if (!form.name || !form.whatsapp) return;
     setSubmitting(true);
     try {
-      await fetch('/api/borrowers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      });
+      await apiPost('/api/borrowers', form);
       setCreateOpen(false);
       triggerRefresh();
     } finally {
@@ -87,11 +84,7 @@ export function BorrowersView() {
     if (!selected || !form.name || !form.whatsapp) return;
     setSubmitting(true);
     try {
-      await fetch(`/api/borrowers/${selected.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      });
+      await apiPut(`/api/borrowers/${selected.id}`, form);
       setEditOpen(false);
       triggerRefresh();
     } finally {
@@ -103,7 +96,7 @@ export function BorrowersView() {
     if (!selected) return;
     setSubmitting(true);
     try {
-      await fetch(`/api/borrowers/${selected.id}`, { method: 'DELETE' });
+      await apiDelete(`/api/borrowers/${selected.id}`);
       setDeleteOpen(false);
       triggerRefresh();
     } finally {

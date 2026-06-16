@@ -1,38 +1,11 @@
-import { cookies } from 'next/headers';
-import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyCredentials, generateToken } from '@/lib/auth';
-
-// In-memory session store
-const sessions = new Map<string, { userId: string; expires: number }>();
-
-export function getSessionUserId(request?: NextRequest): string | null {
-  const cookieStore = request ? request.cookies : cookies();
-  const token = cookieStore.get('cf_session')?.value;
-  if (!token) return null;
-
-  const session = sessions.get(token);
-  if (!session) return null;
-  if (Date.now() > session.expires) {
-    sessions.delete(token);
-    return null;
-  }
-
-  return session.userId;
-}
-
-export function createSession(userId: string): string {
-  const token = generateToken();
-  sessions.set(token, {
-    userId,
-    expires: Date.now() + 30 * 24 * 60 * 60 * 1000, // 30 days
-  });
-  return token;
-}
+import { verifyCredentials } from '@/lib/auth';
+import { createSession } from '@/lib/sessions';
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password } = await request.json();
+    const body = await request.json();
+    const { email, password } = body;
 
     if (!email || !password) {
       return NextResponse.json({ error: 'Email e senha são obrigatórios' }, { status: 400 });
@@ -46,6 +19,7 @@ export async function POST(request: NextRequest) {
     const token = createSession(user.id);
 
     const response = NextResponse.json({
+      token,
       user: {
         id: user.id,
         email: user.email,
@@ -57,7 +31,7 @@ export async function POST(request: NextRequest) {
 
     response.cookies.set('cf_session', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: false,
       sameSite: 'lax',
       maxAge: 30 * 24 * 60 * 60,
       path: '/',
@@ -65,6 +39,7 @@ export async function POST(request: NextRequest) {
 
     return response;
   } catch (error) {
-    return NextResponse.json({ error: 'Erro ao fazer login' }, { status: 500 });
+    console.error('Login error:', error);
+    return NextResponse.json({ error: 'Erro interno no servidor' }, { status: 500 });
   }
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useAppStore } from '@/lib/store';
+import { apiFetch, apiPost } from '@/lib/api';
 import { formatPhone, formatCurrency, formatDate } from '@/lib/helpers';
 import { Plus, FileText, ArrowRight, ChevronRight, MessageCircle } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -48,7 +49,7 @@ export function BorrowerDetailView() {
     if (!selectedBorrowerId) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/borrowers/${selectedBorrowerId}`);
+      const res = await apiFetch(`/api/borrowers/${selectedBorrowerId}`);
       const json = await res.json();
       setBorrower(json);
     } catch (err) {
@@ -83,17 +84,13 @@ export function BorrowerDetailView() {
     if (!originalAmount || !interestRate || !installmentCount || !startDate) return;
     setSubmitting(true);
     try {
-      await fetch('/api/loans', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      await apiPost('/api/loans', {
           borrowerId: borrower.id,
           originalAmount: parseFloat(originalAmount),
           interestRate: parseFloat(interestRate),
           installmentCount: parseInt(installmentCount),
           startDate,
-        }),
-      });
+        });
       setCreateLoanOpen(false);
       useAppStore.getState().triggerRefresh();
       fetchBorrower();

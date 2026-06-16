@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useAppStore } from '@/lib/store';
+import { apiFetch, apiPut } from '@/lib/api';
 import {
   formatCurrency,
   formatDate,
@@ -64,7 +65,7 @@ export function LoanDetailView() {
     if (!selectedLoanId) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/loans/${selectedLoanId}`);
+      const res = await apiFetch(`/api/loans/${selectedLoanId}`);
       const json = await res.json();
       setLoan(json);
     } catch (err) {
@@ -96,11 +97,7 @@ export function LoanDetailView() {
   const handlePayFull = async (inst: Installment) => {
     setSubmitting(true);
     try {
-      await fetch(`/api/installments/${inst.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'PAID' }),
-      });
+      await apiPut(`/api/installments/${inst.id}`, { status: 'PAID' });
       setPayOpen(false);
       triggerRefresh();
       fetchLoan();
@@ -115,17 +112,9 @@ export function LoanDetailView() {
     try {
       const amount = parseFloat(partialAmount);
       if (amount >= selectedInstallment.amount) {
-        await fetch(`/api/installments/${selectedInstallment.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: 'PAID', paidAmount: selectedInstallment.amount }),
-        });
+        await apiPut(`/api/installments/${selectedInstallment.id}`, { status: 'PAID', paidAmount: selectedInstallment.amount });
       } else {
-        await fetch(`/api/installments/${selectedInstallment.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: 'PARTIAL', paidAmount: amount }),
-        });
+        await apiPut(`/api/installments/${selectedInstallment.id}`, { status: 'PARTIAL', paidAmount: amount });
       }
       setPartialOpen(false);
       setPartialAmount('');

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSessionUserId, createSession } from '@/app/api/auth/login/route';
-import { changePassword, getUserById, generateToken } from '@/lib/auth';
+import { getSessionUserId } from '@/lib/sessions';
+import { changePassword, getUserById } from '@/lib/auth';
 import bcrypt from 'bcryptjs';
 
 export async function POST(request: NextRequest) {

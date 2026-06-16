@@ -12,19 +12,18 @@ export function LoginPage() {
   const [loading, setLoading] = useState(false);
   const { setUser } = useAppStore();
 
+  const canSubmit = email.trim().length > 0 && password.length > 0 && !loading;
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
-      toast.error('Preencha email e senha');
-      return;
-    }
+    if (!canSubmit) return;
 
     setLoading(true);
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: email.trim(), password }),
       });
 
       const data = await res.json();
@@ -34,9 +33,10 @@ export function LoginPage() {
         return;
       }
 
-      setUser(data.user);
-    } catch {
-      toast.error('Erro de conexão');
+      setUser(data.user, data.token);
+    } catch (err) {
+      console.error('Login fetch error:', err);
+      toast.error('Erro de conexão com o servidor');
     } finally {
       setLoading(false);
     }
@@ -66,7 +66,8 @@ export function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               autoComplete="email"
-              className="w-full h-12 px-4 bg-surface border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-neon/50 focus:ring-1 focus:ring-neon/20 transition-all text-sm"
+              disabled={loading}
+              className="w-full h-12 px-4 bg-surface border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-neon/50 focus:ring-1 focus:ring-neon/20 transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed"
             />
           </div>
 
@@ -79,12 +80,15 @@ export function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoComplete="current-password"
-                className="w-full h-12 px-4 pr-12 bg-surface border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-neon/50 focus:ring-1 focus:ring-neon/20 transition-all text-sm"
+                disabled={loading}
+                className="w-full h-12 px-4 pr-12 bg-surface border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-neon/50 focus:ring-1 focus:ring-neon/20 transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                disabled={loading}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors disabled:pointer-events-none disabled:opacity-50"
+                tabIndex={-1}
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
@@ -93,8 +97,8 @@ export function LoginPage() {
 
           <button
             type="submit"
-            disabled={loading}
-            className="w-full h-12 bg-neon text-background rounded-xl font-semibold text-sm hover:shadow-[0_0_20px_rgba(0,255,163,0.3)] transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            disabled={!canSubmit}
+            className="w-full h-12 bg-neon text-background rounded-xl font-semibold text-sm hover:shadow-[0_0_20px_rgba(0,255,163,0.3)] transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none disabled:active:scale-100 flex items-center justify-center gap-2"
           >
             {loading ? (
               <div className="w-5 h-5 border-2 border-background/30 border-t-background rounded-full animate-spin" />

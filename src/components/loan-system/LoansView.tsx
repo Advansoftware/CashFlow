@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useAppStore } from '@/lib/store';
+import { apiFetch, apiPost, apiDelete } from '@/lib/api';
 import { formatCurrency, formatDate, getStatusLabel, getStatusBgColor, formatPhone } from '@/lib/helpers';
 import { Plus, Search, FileText, Trash2, ChevronRight, User, Percent, Calendar, ArrowRight, ArrowLeftRight } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -73,8 +74,8 @@ export function LoansView() {
   const fetchData = useCallback(async () => {
     try {
       const [loansRes, borrowersRes] = await Promise.all([
-        fetch('/api/loans'),
-        fetch('/api/borrowers'),
+        apiFetch('/api/loans'),
+        apiFetch('/api/borrowers'),
       ]);
       setLoans(await loansRes.json());
       setBorrowers(await borrowersRes.json());
@@ -143,17 +144,13 @@ export function LoansView() {
     if (!form.borrowerId || !P || !finalRate || !n || !form.startDate) return;
     setSubmitting(true);
     try {
-      await fetch('/api/loans', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      await apiPost('/api/loans', {
           borrowerId: form.borrowerId,
           originalAmount: P,
           interestRate: finalRate,
           installmentCount: n,
           startDate: form.startDate,
-        }),
-      });
+        });
       setCreateOpen(false);
       triggerRefresh();
     } finally {
@@ -165,7 +162,7 @@ export function LoansView() {
     if (!selected) return;
     setSubmitting(true);
     try {
-      await fetch(`/api/loans/${selected.id}`, { method: 'DELETE' });
+      await apiDelete(`/api/loans/${selected.id}`);
       setDeleteOpen(false);
       triggerRefresh();
     } finally {

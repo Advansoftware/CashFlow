@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useAppStore } from '@/lib/store';
+import { apiFetch, apiPost, apiDelete } from '@/lib/api';
 import { formatDate } from '@/lib/helpers';
 import {
   Plus, UserPlus, Shield, Trash2, ChevronRight,
@@ -31,7 +32,7 @@ export function AdminView() {
 
   const fetchUsers = useCallback(async () => {
     try {
-      const res = await fetch('/api/admin/users');
+      const res = await apiFetch('/api/admin/users');
       if (res.ok) setUsers(await res.json());
     } catch {}
     setLoading(false);
@@ -43,11 +44,7 @@ export function AdminView() {
     if (!form.email || !form.name || !form.password) return;
     setSubmitting(true);
     try {
-      const res = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      });
+      const res = await apiPost('/api/auth/register', form);
       if (!res.ok) {
         const data = await res.json();
         throw new Error(data.error);
@@ -66,11 +63,7 @@ export function AdminView() {
   const handleDeactivate = async (targetId: string) => {
     if (!confirm('Desativar este usuário?')) return;
     try {
-      await fetch('/api/admin/users', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ targetUserId: targetId }),
-      });
+      await apiDelete('/api/admin/users', { targetUserId: targetId });
       fetchUsers();
     } catch {}
   };
@@ -209,7 +202,7 @@ export function AdminUserDashboardView() {
     let cancelled = false;
     (async () => {
       try {
-        const usersRes = await fetch('/api/admin/users');
+        const usersRes = await apiFetch('/api/admin/users');
         if (usersRes.ok && !cancelled) {
           const users = await usersRes.json();
           setUserInfo(users.find((u: ManagedUser) => u.id === adminSelectedUserId) || null);

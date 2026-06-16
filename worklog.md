@@ -31,3 +31,25 @@ Stage Summary:
 - Dual interest calculation (Price table, bidirectional)
 - WhatsApp integration for debt collection
 - Mobile-first responsive design with premium dark theme
+
+---
+Task: Migrate all client-side fetch('/api/...') calls to use apiFetch helpers from @/lib/api
+
+Files updated (8):
+- src/app/page.tsx — fetch('/api/auth/me') → apiFetch (1 GET)
+- src/components/loan-system/BorrowersView.tsx — 1 GET, 1 POST, 1 PUT, 1 DELETE replaced
+- src/components/loan-system/ChangePasswordPage.tsx — 1 POST replaced
+- src/components/loan-system/Navigation.tsx — 1 POST replaced
+- src/components/loan-system/AdminView.tsx — 2 GET, 1 POST, 1 DELETE replaced
+- src/components/loan-system/BorrowerDetailView.tsx — 1 GET, 1 POST replaced
+- src/components/loan-system/DashboardView.tsx — 1 GET replaced
+- src/components/loan-system/LoansView.tsx — 2 GET, 1 POST, 1 DELETE replaced
+
+Total: 20 fetch calls migrated to apiFetch/apiPost/apiPut/apiDelete helpers.
+
+Exclusions (by design):
+- LoginPage.tsx fetch('/api/auth/login') left untouched (no token available yet)
+- LoanDetailView.tsx not in scope of this task (contains 4 remaining fetch calls)
+- useAppStore imports left untouched in all files
+
+Lint: PASSED (bun run lint — zero errors)

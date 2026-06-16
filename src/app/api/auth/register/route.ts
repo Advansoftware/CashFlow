@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSessionUserId } from '@/app/api/auth/login/route';
+import { getSessionUserId } from '@/lib/sessions';
 import { db } from '@/lib/db';
 import { getUserById } from '@/lib/auth';
 import bcrypt from 'bcryptjs';

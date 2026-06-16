@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { apiFetch } from '@/lib/api';
 
 interface DashboardData {
   totalMonthly: number;
@@ -52,7 +53,7 @@ export function DashboardView() {
 
   const fetchDashboard = useCallback(async () => {
     try {
-      const res = await fetch('/api/dashboard');
+      const res = await apiFetch('/api/dashboard');
       const json = await res.json();
       setData(json);
     } catch (err) {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useAppStore } from '@/lib/store';
+import { apiPost } from '@/lib/api';
 import { LayoutDashboard, Users, FileText, Shield, LogOut, KeyRound } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
@@ -37,11 +38,7 @@ export function BottomNav() {
     if (newPwd.length < 6) { toast.error('Mínimo 6 caracteres'); return; }
     setChanging(true);
     try {
-      const res = await fetch('/api/auth/change-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ currentPassword: currentPwd, newPassword: newPwd }),
-      });
+      const res = await apiPost('/api/auth/change-password', { currentPassword: currentPwd, newPassword: newPwd });
       if (!res.ok) { const d = await res.json(); throw new Error(d.error); }
       toast.success('Senha alterada!');
       setPasswordOpen(false);

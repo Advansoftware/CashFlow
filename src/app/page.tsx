@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { apiFetch } from '@/lib/api';
 import { BottomNav } from '@/components/loan-system/Navigation';
 import { DashboardView } from '@/components/loan-system/DashboardView';
 import { BorrowersView } from '@/components/loan-system/BorrowersView';
@@ -39,7 +40,7 @@ export default function Home() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch('/api/auth/me');
+        const res = await apiFetch('/api/auth/me');
         if (res.ok) {
           const data = await res.json();
           setUser(data);

@@ -1,6 +1,6 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
-import { getSessionUserId } from '@/app/api/auth/login/route';
+import { getSessionUserId } from '@/lib/sessions';
 
 export async function GET(request: NextRequest) {
   const userId = getSessionUserId(request);

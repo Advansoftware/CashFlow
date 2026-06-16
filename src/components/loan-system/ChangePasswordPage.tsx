@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useAppStore } from '@/lib/store';
+import { apiPost } from '@/lib/api';
 import { Zap, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -34,11 +35,7 @@ export function ChangePasswordPage() {
 
     setLoading(true);
     try {
-      const res = await fetch('/api/auth/change-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ currentPassword, newPassword }),
-      });
+      const res = await apiPost('/api/auth/change-password', { currentPassword, newPassword });
 
       const data = await res.json();
 
