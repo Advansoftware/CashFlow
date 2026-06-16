@@ -147,8 +147,9 @@ export function BorrowerDetailView() {
         ) : (
           <div className="space-y-2">
             {borrower.loans.map((loan) => {
-              const paidCount = loan.installments.filter((i) => i.status === 'PAID' || i.status === 'PARTIAL').length;
-              const progress = (paidCount / loan.installments.length) * 100;
+              const paidCount = loan.installments.filter((i) => i.status === 'PAID').length;
+              const paidAmount = loan.installments.reduce((sum, i) => sum + (i.paidAmount || 0), 0);
+              const progress = loan.totalAmount > 0 ? (paidAmount / loan.totalAmount) * 100 : 0;
               return (
                 <div
                   key={loan.id}

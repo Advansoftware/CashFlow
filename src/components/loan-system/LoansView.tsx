@@ -93,8 +93,10 @@ export function LoansView() {
   };
 
   const getLoanProgress = (loan: Loan) => {
-    const paid = loan.installments.filter((i) => i.status === 'PAID' || i.status === 'PARTIAL').length;
-    return { paid, total: loan.installments.length, percent: (paid / loan.installments.length) * 100 };
+    const paid = loan.installments.filter((i) => i.status === 'PAID').length;
+    const paidAmount = loan.installments.reduce((sum, i) => sum + (i.paidAmount || 0), 0);
+    const percent = loan.totalAmount > 0 ? (paidAmount / loan.totalAmount) * 100 : 0;
+    return { paid, total: loan.installments.length, percent };
   };
 
   return (

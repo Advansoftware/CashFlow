@@ -40,18 +40,18 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     });
 
     // Check if all paid
-    if (status === 'PAID' || status === 'PARTIAL') {
-      const loan = await db.loan.findUnique({
-        where: { id: installment.loanId },
-        include: { installments: true },
-      });
-      if (loan) {
-        const allDone = loan.installments.every(
-          (inst) => inst.status === 'PAID' || inst.status === 'PARTIAL'
-        );
-        if (allDone) {
-          await db.loan.update({ where: { id: loan.id }, data: { status: 'COMPLETED' } });
-        }
+    const loan = await db.loan.findUnique({
+      where: { id: installment.loanId },
+      include: { installments: true },
+    });
+    if (loan) {
+      const allDone = loan.installments.every(
+        (inst) => inst.status === 'PAID'
+      );
+      if (allDone) {
+        await db.loan.update({ where: { id: loan.id }, data: { status: 'COMPLETED' } });
+      } else {
+        await db.loan.update({ where: { id: loan.id }, data: { status: 'ACTIVE' } });
       }
     }
 

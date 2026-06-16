@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
 
     const activeLoans = await db.loan.count({ where: { userId, status: 'ACTIVE' } });
     const totalOutstanding = allInstallments
-      .filter((i) => i.status === 'PENDING' || i.status === 'OVERDUE')
+      .filter((i) => i.status !== 'PAID')
       .reduce((s, i) => s + (i.amount - (i.paidAmount || 0)), 0);
 
     const recentLoans = await db.loan.findMany({

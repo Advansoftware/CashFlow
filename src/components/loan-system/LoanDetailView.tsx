@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useAppStore } from '@/lib/store';
-import { apiFetch, apiPut, getApiError } from '@/lib/api';
+import { apiFetch, apiPut, apiPost, getApiError } from '@/lib/api';
 import {
   formatCurrency,
   formatDate,
@@ -23,6 +23,8 @@ import {
   Calendar,
   AlertTriangle,
   CreditCard,
+  ArrowLeftRight,
+  Undo2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -62,6 +64,12 @@ export function LoanDetailView() {
   const [partialAmount, setPartialAmount] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  const [interestOpen, setInterestOpen] = useState(false);
+  const [interestAmount, setInterestAmount] = useState('');
+  const [rollImmediately, setRollImmediately] = useState(true);
+  const [rollRemainingOpen, setRollRemainingOpen] = useState(false);
+  const [undoRollOpen, setUndoRollOpen] = useState(false);
+
   const fetchLoan = useCallback(async () => {
     if (!selectedLoanId) return;
     setLoading(true);
@@ -93,10 +101,10 @@ export function LoanDetailView() {
 
   if (!loan) return null;
 
-  const paidCount = loan.installments.filter((i) => i.status === 'PAID' || i.status === 'PARTIAL').length;
+  const paidCount = loan.installments.filter((i) => i.status === 'PAID').length;
   const paidAmount = loan.installments.reduce((sum, i) => sum + (i.paidAmount || 0), 0);
   const remainingAmount = loan.totalAmount - paidAmount;
-  const progressPercent = (paidCount / loan.installments.length) * 100;
+  const progressPercent = loan.totalAmount > 0 ? (paidAmount / loan.totalAmount) * 100 : 0;
 
   const handlePayFull = async (inst: Installment) => {
     setSubmitting(true);
@@ -129,6 +137,77 @@ export function LoanDetailView() {
       if (errMsg) { toast.error(errMsg); return; }
       setPartialOpen(false);
       setPartialAmount('');
+      triggerRefresh();
+      fetchLoan();
+    } catch {
+      toast.error('Erro de conexão com o servidor');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handlePayInterest = async () => {
+    if (!selectedInstallment || !interestAmount) return;
+    setSubmitting(true);
+    try {
+      const amount = parseFloat(interestAmount);
+      const res = await apiPost(`/api/installments/${selectedInstallment.id}/pay-interest`, {
+        interestAmount: amount,
+        rollImmediately,
+      });
+
+      const errMsg = await getApiError(res);
+      if (errMsg) {
+        toast.error(errMsg);
+        return;
+      }
+
+      toast.success(rollImmediately ? 'Juros pagos e parcela adiada!' : 'Pagamento de juros registrado!');
+      setInterestOpen(false);
+      triggerRefresh();
+      fetchLoan();
+    } catch {
+      toast.error('Erro de conexão com o servidor');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleRollRemaining = async () => {
+    if (!selectedInstallment) return;
+    setSubmitting(true);
+    try {
+      const res = await apiPost(`/api/installments/${selectedInstallment.id}/roll-remaining`, {});
+      const errMsg = await getApiError(res);
+      if (errMsg) {
+        toast.error(errMsg);
+        return;
+      }
+
+      toast.success('Parcela adiada para o próximo mês!');
+      setRollRemainingOpen(false);
+      triggerRefresh();
+      fetchLoan();
+    } catch {
+      toast.error('Erro de conexão com o servidor');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleUndoRoll = async () => {
+    if (!selectedInstallment) return;
+    setSubmitting(true);
+    try {
+      const res = await apiPost(`/api/installments/${selectedInstallment.id}/undo-roll`, {});
+      const errMsg = await getApiError(res);
+      if (errMsg) {
+        toast.error(errMsg);
+        return;
+      }
+
+      toast.success('Rolagem desfeita com sucesso!');
+      setUndoRollOpen(false);
       triggerRefresh();
       fetchLoan();
     } catch {
@@ -259,43 +338,86 @@ export function LoanDetailView() {
 
                 {/* Actions */}
                 {inst.status !== 'PAID' && (
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => {
-                        setSelectedInstallment(inst);
-                        setPayOpen(true);
-                      }}
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-neon/10 hover:bg-neon/20 text-neon rounded-xl text-xs font-semibold transition-colors active:scale-[0.98]"
-                    >
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      Dar Baixa
-                    </button>
-                    <button
-                      onClick={() => {
-                        setSelectedInstallment(inst);
-                        setPartialAmount('');
-                        setPartialOpen(true);
-                      }}
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-surface-elevated hover:bg-secondary text-foreground rounded-xl text-xs font-medium transition-colors active:scale-[0.98]"
-                    >
-                      <DollarSign className="w-3.5 h-3.5" />
-                      Pagamento Parcial
-                    </button>
-                    <a
-                      href={waLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center justify-center w-10 h-10 bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#25D366] rounded-xl transition-colors shrink-0"
-                    >
-                      <MessageCircle className="w-4 h-4" />
-                    </a>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          setSelectedInstallment(inst);
+                          setPayOpen(true);
+                        }}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-neon/10 hover:bg-neon/20 text-neon rounded-xl text-xs font-semibold transition-colors active:scale-[0.98] cursor-pointer"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        Dar Baixa
+                      </button>
+                      <button
+                        onClick={() => {
+                          setSelectedInstallment(inst);
+                          setPartialAmount('');
+                          setPartialOpen(true);
+                        }}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-surface-elevated hover:bg-secondary text-foreground rounded-xl text-xs font-medium transition-colors active:scale-[0.98] cursor-pointer"
+                      >
+                        <DollarSign className="w-3.5 h-3.5" />
+                        Pagamento Parcial
+                      </button>
+                      <a
+                        href={waLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center w-10 h-10 bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#25D366] rounded-xl transition-colors shrink-0"
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                      </a>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          setSelectedInstallment(inst);
+                          const standardInterest = loan.originalAmount * (loan.interestRate / 100);
+                          setInterestAmount(String(Math.round(standardInterest * 100) / 100));
+                          setRollImmediately(true);
+                          setInterestOpen(true);
+                        }}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-warning/10 hover:bg-warning/20 text-warning rounded-xl text-xs font-semibold transition-colors active:scale-[0.98] cursor-pointer"
+                      >
+                        <Percent className="w-3.5 h-3.5" />
+                        Pagar Apenas Juros
+                      </button>
+                      {inst.status === 'PARTIAL' && (
+                        <button
+                          onClick={() => {
+                            setSelectedInstallment(inst);
+                            setRollRemainingOpen(true);
+                          }}
+                          className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 rounded-xl text-xs font-semibold transition-colors active:scale-[0.98] cursor-pointer"
+                        >
+                          <ArrowLeftRight className="w-3.5 h-3.5" />
+                          Adiar Parcela
+                        </button>
+                      )}
+                    </div>
                   </div>
                 )}
 
                 {inst.status === 'PAID' && (
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-neon" />
-                    {inst.paidAt ? `Pago em ${formatDate(inst.paidAt)}` : 'Pago'}
+                  <div className="flex items-center justify-between w-full">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-neon" />
+                      {inst.paidAt ? `Pago em ${formatDate(inst.paidAt)}` : 'Pago'}
+                    </div>
+                    {loan.installments.some((x) => x.installmentNumber === inst.installmentNumber + 1) && (
+                      <button
+                        onClick={() => {
+                          setSelectedInstallment(inst);
+                          setUndoRollOpen(true);
+                        }}
+                        className="text-xs text-danger hover:underline cursor-pointer flex items-center gap-1"
+                      >
+                        <Undo2 className="w-3 h-3" />
+                        Desfazer Pagamento
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -379,6 +501,169 @@ export function LoanDetailView() {
               className="bg-neon text-background hover:bg-neon/90 font-semibold rounded-xl flex-1"
             >
               {submitting ? 'Registrando...' : 'Registrar Pagamento'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Pay Only Interest Dialog */}
+      <Dialog open={interestOpen} onOpenChange={setInterestOpen}>
+        <DialogContent className="bg-surface border-border text-foreground sm:max-w-md rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold">Pagar Apenas Juros</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              Parcela #{selectedInstallment?.installmentNumber} — Valor total:{' '}
+              <strong className="text-foreground">{selectedInstallment ? formatCurrency(selectedInstallment.amount) : ''}</strong>
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Valor dos Juros (R$)</label>
+              <Input
+                type="number"
+                step="0.01"
+                placeholder="Ex: 150"
+                value={interestAmount}
+                onChange={(e) => setInterestAmount(e.target.value)}
+                className="bg-surface-elevated border-border text-foreground placeholder:text-muted-foreground rounded-xl h-11"
+              />
+              <p className="text-xs text-muted-foreground">Valor padrão correspondente à taxa mensal do empréstimo.</p>
+            </div>
+
+            <div className="space-y-3 pt-2">
+              <label className="text-sm font-medium text-foreground">Ação de Rolagem</label>
+              <div className="space-y-2">
+                <label className="flex items-center gap-3 p-3 bg-surface-elevated rounded-xl border border-border cursor-pointer hover:bg-secondary/20 transition-colors">
+                  <input
+                    type="radio"
+                    name="rollImmediately"
+                    checked={rollImmediately === true}
+                    onChange={() => setRollImmediately(true)}
+                    className="accent-neon h-4 w-4 shrink-0"
+                  />
+                  <div>
+                    <p className="text-xs font-semibold text-foreground">Rolar parcela (Adiar vencimento)</p>
+                    <p className="text-[10px] text-muted-foreground">Adia esta parcela e as futuras em 1 mês. Cria parcela de juros paga.</p>
+                  </div>
+                </label>
+
+                <label className="flex items-center gap-3 p-3 bg-surface-elevated rounded-xl border border-border cursor-pointer hover:bg-secondary/20 transition-colors">
+                  <input
+                    type="radio"
+                    name="rollImmediately"
+                    checked={rollImmediately === false}
+                    onChange={() => setRollImmediately(false)}
+                    className="accent-neon h-4 w-4 shrink-0"
+                  />
+                  <div>
+                    <p className="text-xs font-semibold text-foreground">Apenas registrar pagamento parcial</p>
+                    <p className="text-[10px] text-muted-foreground">Mantém a data original. Útil se o cliente for pagar o restante em breve.</p>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            {rollImmediately && (
+              <div className="bg-warning/10 rounded-xl p-3 border border-warning/20 flex gap-2.5 items-start">
+                <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+                <p className="text-xs text-warning leading-relaxed">
+                  <strong>Aviso:</strong> A data desta parcela e de todas as parcelas futuras serão adiadas em 1 mês. O juro pago será registrado em uma parcela quitada neste mês.
+                </p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => setInterestOpen(false)}
+              className="bg-surface-elevated text-foreground hover:bg-secondary rounded-xl flex-1 cursor-pointer"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handlePayInterest}
+              disabled={submitting || !interestAmount || parseFloat(interestAmount) <= 0}
+              className="bg-neon text-background hover:bg-neon/90 font-semibold rounded-xl flex-1 cursor-pointer"
+            >
+              {submitting ? 'Confirmando...' : 'Confirmar Pagamento'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Roll Remaining Dialog */}
+      <Dialog open={rollRemainingOpen} onOpenChange={setRollRemainingOpen}>
+        <DialogContent className="bg-surface border-border text-foreground sm:max-w-md rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold">Rolar Parcela (Adiar Vencimento)</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              Deseja adiar o saldo restante desta parcela para o próximo mês?
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              O valor pago até o momento ({selectedInstallment ? formatCurrency(selectedInstallment.paidAmount) : ''}) será isolado como uma nova parcela correspondente ao juro quitado deste mês.
+            </p>
+            <div className="bg-warning/10 rounded-xl p-3 border border-warning/20 flex gap-2.5 items-start">
+              <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+              <p className="text-xs text-warning leading-relaxed">
+                A data de vencimento desta parcela e de todas as parcelas futuras serão empurradas em 1 mês para a frente.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => setRollRemainingOpen(false)}
+              className="bg-surface-elevated text-foreground hover:bg-secondary rounded-xl flex-1 cursor-pointer"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleRollRemaining}
+              disabled={submitting}
+              className="bg-neon text-background hover:bg-neon/90 font-semibold rounded-xl flex-1 cursor-pointer"
+            >
+              {submitting ? 'Processando...' : 'Confirmar Rolagem'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Undo Roll Dialog */}
+      <Dialog open={undoRollOpen} onOpenChange={setUndoRollOpen}>
+        <DialogContent className="bg-surface border-border text-foreground sm:max-w-md rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold">Desfazer Pagamento de Juros</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              Tem certeza que deseja desfazer este pagamento de juros e reverter a alteração de vencimento?
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Esta ação removerá o registro desta parcela de juros e trará a parcela original e todas as subsequentes de volta para o mês atual, definindo o valor pago como pagamento parcial.
+            </p>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => setUndoRollOpen(false)}
+              className="bg-surface-elevated text-foreground hover:bg-secondary rounded-xl flex-1 cursor-pointer"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleUndoRoll}
+              disabled={submitting}
+              className="bg-danger/10 text-danger border border-danger/20 hover:bg-danger/20 font-semibold rounded-xl flex-1 cursor-pointer"
+            >
+              {submitting ? 'Processando...' : 'Desfazer Pagamento'}
             </Button>
           </DialogFooter>
         </DialogContent>
