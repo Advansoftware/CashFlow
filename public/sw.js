@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tamoquite-v2';
+const CACHE_NAME = 'tamoquite-v3';
 const STATIC_ASSETS = [
   '/manifest.json',
 ];
@@ -8,6 +8,12 @@ self.addEventListener('install', (event) => {
     caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
   );
   self.skipWaiting();
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener('activate', (event) => {

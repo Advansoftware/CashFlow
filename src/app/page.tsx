@@ -13,6 +13,7 @@ import { LoginPage } from '@/components/loan-system/LoginPage';
 import { LandingPage } from '@/components/loan-system/LandingPage';
 import { ChangePasswordPage } from '@/components/loan-system/ChangePasswordPage';
 import { ServiceWorkerRegister } from '@/components/loan-system/ServiceWorkerRegister';
+import { PwaInstallPrompt } from '@/components/loan-system/PwaInstallPrompt';
 import { SupportButton } from '@/components/loan-system/SupportButton';
 import { useAppStore } from '@/lib/store';
 import { Zap, CreditCard, LogOut, Loader2 } from 'lucide-react';
@@ -206,7 +207,8 @@ export default function Home() {
     if (showLogin) {
       return (
         <>
-          <LoginPage onBackToLanding={() => setShowLogin(false)} />
+          <LoginPage onBackToLanding={() => setShowLogin(true)} />
+          <PwaInstallPrompt />
           <SupportButton />
         </>
       );
@@ -214,6 +216,7 @@ export default function Home() {
     return (
       <>
         <LandingPage onEnterApp={() => setShowLogin(true)} />
+        <PwaInstallPrompt />
         <SupportButton />
       </>
     );
@@ -224,6 +227,7 @@ export default function Home() {
     return (
       <>
         <PremiumBlockPage />
+        <PwaInstallPrompt />
         <SupportButton />
       </>
     );
@@ -234,6 +238,7 @@ export default function Home() {
     return (
       <>
         <ChangePasswordPage />
+        <PwaInstallPrompt />
         <SupportButton />
       </>
     );
