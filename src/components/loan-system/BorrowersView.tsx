@@ -2,9 +2,10 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useAppStore } from '@/lib/store';
-import { apiFetch, apiPost, apiPut, apiDelete } from '@/lib/api';
+import { apiFetch, apiPost, apiPut, apiDelete, getApiError } from '@/lib/api';
 import { formatPhone, formatCurrency, formatDate } from '@/lib/helpers';
 import { Plus, Search, Phone, Trash2, User, ChevronRight, MessageCircle } from 'lucide-react';
+import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -72,9 +73,13 @@ export function BorrowersView() {
     if (!form.name || !form.whatsapp) return;
     setSubmitting(true);
     try {
-      await apiPost('/api/borrowers', form);
+      const res = await apiPost('/api/borrowers', form);
+      const errMsg = await getApiError(res);
+      if (errMsg) { toast.error(errMsg); return; }
       setCreateOpen(false);
       triggerRefresh();
+    } catch {
+      toast.error('Erro de conexão com o servidor');
     } finally {
       setSubmitting(false);
     }
@@ -84,9 +89,13 @@ export function BorrowersView() {
     if (!selected || !form.name || !form.whatsapp) return;
     setSubmitting(true);
     try {
-      await apiPut(`/api/borrowers/${selected.id}`, form);
+      const res = await apiPut(`/api/borrowers/${selected.id}`, form);
+      const errMsg = await getApiError(res);
+      if (errMsg) { toast.error(errMsg); return; }
       setEditOpen(false);
       triggerRefresh();
+    } catch {
+      toast.error('Erro de conexão com o servidor');
     } finally {
       setSubmitting(false);
     }
@@ -96,9 +105,13 @@ export function BorrowersView() {
     if (!selected) return;
     setSubmitting(true);
     try {
-      await apiDelete(`/api/borrowers/${selected.id}`);
+      const res = await apiDelete(`/api/borrowers/${selected.id}`);
+      const errMsg = await getApiError(res);
+      if (errMsg) { toast.error(errMsg); return; }
       setDeleteOpen(false);
       triggerRefresh();
+    } catch {
+      toast.error('Erro de conexão com o servidor');
     } finally {
       setSubmitting(false);
     }

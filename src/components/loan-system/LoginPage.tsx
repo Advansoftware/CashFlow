@@ -26,17 +26,27 @@ export function LoginPage() {
         body: JSON.stringify({ email: email.trim(), password }),
       });
 
-      const data = await res.json();
-
       if (!res.ok) {
-        toast.error(data.error || 'Erro ao fazer login');
+        if (res.status === 401) {
+          toast.error('Email ou senha inválidos');
+        } else if (res.status === 400) {
+          const data = await res.json();
+          toast.error(data.error || 'Preencha todos os campos');
+        } else {
+          toast.error('Erro no servidor. Tente novamente.');
+        }
         return;
       }
 
+      const data = await res.json();
       setUser(data.user, data.token);
     } catch (err) {
       console.error('Login fetch error:', err);
-      toast.error('Erro de conexão com o servidor');
+      if (err instanceof TypeError && err.message === 'Failed to fetch') {
+        toast.error('Erro de conexão com o servidor. Verifique sua internet.');
+      } else {
+        toast.error('Erro de conexão com o servidor');
+      }
     } finally {
       setLoading(false);
     }

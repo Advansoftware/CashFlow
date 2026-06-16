@@ -2,9 +2,10 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useAppStore } from '@/lib/store';
-import { apiFetch, apiPost } from '@/lib/api';
+import { apiFetch, apiPost, getApiError } from '@/lib/api';
 import { formatPhone, formatCurrency, formatDate } from '@/lib/helpers';
 import { Plus, FileText, ArrowRight, ChevronRight, MessageCircle } from 'lucide-react';
+import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -84,16 +85,20 @@ export function BorrowerDetailView() {
     if (!originalAmount || !interestRate || !installmentCount || !startDate) return;
     setSubmitting(true);
     try {
-      await apiPost('/api/loans', {
+      const res = await apiPost('/api/loans', {
           borrowerId: borrower.id,
           originalAmount: parseFloat(originalAmount),
           interestRate: parseFloat(interestRate),
           installmentCount: parseInt(installmentCount),
           startDate,
         });
+      const errMsg = await getApiError(res);
+      if (errMsg) { toast.error(errMsg); return; }
       setCreateLoanOpen(false);
       useAppStore.getState().triggerRefresh();
       fetchBorrower();
+    } catch {
+      toast.error('Erro de conexão com o servidor');
     } finally {
       setSubmitting(false);
     }

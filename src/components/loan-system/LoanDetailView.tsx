@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useAppStore } from '@/lib/store';
-import { apiFetch, apiPut } from '@/lib/api';
+import { apiFetch, apiPut, getApiError } from '@/lib/api';
 import {
   formatCurrency,
   formatDate,
@@ -24,6 +24,7 @@ import {
   AlertTriangle,
   CreditCard,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -97,10 +98,14 @@ export function LoanDetailView() {
   const handlePayFull = async (inst: Installment) => {
     setSubmitting(true);
     try {
-      await apiPut(`/api/installments/${inst.id}`, { status: 'PAID' });
+      const res = await apiPut(`/api/installments/${inst.id}`, { status: 'PAID' });
+      const errMsg = await getApiError(res);
+      if (errMsg) { toast.error(errMsg); return; }
       setPayOpen(false);
       triggerRefresh();
       fetchLoan();
+    } catch {
+      toast.error('Erro de conexão com o servidor');
     } finally {
       setSubmitting(false);
     }
@@ -111,15 +116,20 @@ export function LoanDetailView() {
     setSubmitting(true);
     try {
       const amount = parseFloat(partialAmount);
+      let res: Response;
       if (amount >= selectedInstallment.amount) {
-        await apiPut(`/api/installments/${selectedInstallment.id}`, { status: 'PAID', paidAmount: selectedInstallment.amount });
+        res = await apiPut(`/api/installments/${selectedInstallment.id}`, { status: 'PAID', paidAmount: selectedInstallment.amount });
       } else {
-        await apiPut(`/api/installments/${selectedInstallment.id}`, { status: 'PARTIAL', paidAmount: amount });
+        res = await apiPut(`/api/installments/${selectedInstallment.id}`, { status: 'PARTIAL', paidAmount: amount });
       }
+      const errMsg = await getApiError(res);
+      if (errMsg) { toast.error(errMsg); return; }
       setPartialOpen(false);
       setPartialAmount('');
       triggerRefresh();
       fetchLoan();
+    } catch {
+      toast.error('Erro de conexão com o servidor');
     } finally {
       setSubmitting(false);
     }

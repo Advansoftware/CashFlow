@@ -10,7 +10,7 @@ export async function apiFetch(url: string, options: RequestInit = {}): Promise<
   if (options.body && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
-  return fetch(url, { ...options, headers });
+  return fetch(url, { ...options, headers, credentials: 'include' });
 }
 
 export async function apiPost(url: string, body: unknown): Promise<Response> {
@@ -32,4 +32,40 @@ export async function apiPut(url: string, body: unknown): Promise<Response> {
     method: 'PUT',
     body: JSON.stringify(body),
   });
+}
+
+/**
+ * Handles API error responses with appropriate user-facing messages.
+ * Returns the error message string, or null if the response was OK.
+ */
+export async function getApiError(res: Response): Promise<string | null> {
+  if (res.ok) return null;
+
+  if (res.status === 401) {
+    return 'Sessão expirada. Faça login novamente.';
+  }
+
+  if (res.status === 403) {
+    return 'Você não tem permissão para esta ação.';
+  }
+
+  if (res.status === 404) {
+    return 'Recurso não encontrado.';
+  }
+
+  if (res.status === 400 || res.status === 422) {
+    try {
+      const data = await res.json();
+      return data.error || 'Dados inválidos. Verifique os campos.';
+    } catch {
+      return 'Dados inválidos. Verifique os campos.';
+    }
+  }
+
+  try {
+    const data = await res.json();
+    return data.error || 'Erro no servidor. Tente novamente.';
+  } catch {
+    return 'Erro no servidor. Tente novamente.';
+  }
 }

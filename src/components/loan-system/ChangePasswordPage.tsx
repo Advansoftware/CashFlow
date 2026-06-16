@@ -37,17 +37,34 @@ export function ChangePasswordPage() {
     try {
       const res = await apiPost('/api/auth/change-password', { currentPassword, newPassword });
 
-      const data = await res.json();
-
       if (!res.ok) {
-        toast.error(data.error || 'Erro ao alterar senha');
+        if (res.status === 401) {
+          const data = await res.json().catch(() => null);
+          if (data?.error === 'Senha atual incorreta') {
+            toast.error('Senha atual incorreta');
+          } else {
+            toast.error('Sessão expirada. Faça login novamente.');
+            // Log out the user so they can re-authenticate
+            setTimeout(() => useAppStore.getState().logout(), 1000);
+          }
+        } else if (res.status === 400) {
+          const data = await res.json().catch(() => null);
+          toast.error(data?.error || 'Dados inválidos');
+        } else {
+          toast.error('Erro ao alterar senha. Tente novamente.');
+        }
         return;
       }
 
       toast.success('Senha alterada com sucesso!');
       setUser({ ...user!, mustChangePassword: false });
-    } catch {
-      toast.error('Erro de conexão');
+    } catch (err) {
+      console.error('Change password error:', err);
+      if (err instanceof TypeError && err.message === 'Failed to fetch') {
+        toast.error('Erro de conexão com o servidor. Verifique sua internet.');
+      } else {
+        toast.error('Erro de conexão com o servidor');
+      }
     } finally {
       setLoading(false);
     }

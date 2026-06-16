@@ -2,11 +2,12 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useAppStore } from '@/lib/store';
-import { apiFetch, apiPost, apiDelete } from '@/lib/api';
+import { apiFetch, apiPost, apiDelete, getApiError } from '@/lib/api';
 import { formatDate } from '@/lib/helpers';
 import {
   Plus, UserPlus, Shield, Trash2, ChevronRight,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -45,16 +46,14 @@ export function AdminView() {
     setSubmitting(true);
     try {
       const res = await apiPost('/api/auth/register', form);
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error);
-      }
+      const errMsg = await getApiError(res);
+      if (errMsg) { toast.error(errMsg); return; }
       setCreateOpen(false);
       setForm({ email: '', name: '', password: '', role: 'CLIENT' });
+      toast.success('Usuário criado com sucesso!');
       fetchUsers();
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Erro ao criar usuário';
-      alert(msg);
+    } catch {
+      toast.error('Erro de conexão com o servidor');
     } finally {
       setSubmitting(false);
     }
@@ -63,9 +62,14 @@ export function AdminView() {
   const handleDeactivate = async (targetId: string) => {
     if (!confirm('Desativar este usuário?')) return;
     try {
-      await apiDelete('/api/admin/users', { targetUserId: targetId });
+      const res = await apiDelete('/api/admin/users', { targetUserId: targetId });
+      const errMsg = await getApiError(res);
+      if (errMsg) { toast.error(errMsg); return; }
+      toast.success('Usuário desativado');
       fetchUsers();
-    } catch {}
+    } catch {
+      toast.error('Erro de conexão com o servidor');
+    }
   };
 
   return (

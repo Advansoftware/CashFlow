@@ -1,11 +1,22 @@
-// In-memory session store
-const sessions = new Map<string, { userId: string; expires: number }>();
+// Session store using globalThis to survive HMR in dev mode
+interface SessionData {
+  userId: string;
+  expires: number;
+}
+
+function getSessionStore(): Map<string, SessionData> {
+  const g = globalThis as Record<string, unknown>;
+  if (!g.__cf_sessions) {
+    g.__cf_sessions = new Map<string, SessionData>();
+  }
+  return g.__cf_sessions as Map<string, SessionData>;
+}
 
 export function createSession(userId: string): string {
   const bytes = new Uint8Array(32);
   crypto.getRandomValues(bytes);
   const token = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
-  sessions.set(token, {
+  getSessionStore().set(token, {
     userId,
     expires: Date.now() + 30 * 24 * 60 * 60 * 1000,
   });
@@ -13,6 +24,8 @@ export function createSession(userId: string): string {
 }
 
 export function getSessionUserId(request: Request): string | null {
+  const sessions = getSessionStore();
+
   // Try Authorization header first (most reliable across proxies)
   const authHeader = request.headers.get('authorization');
   if (authHeader && authHeader.startsWith('Bearer ')) {

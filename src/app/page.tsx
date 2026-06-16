@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { apiFetch } from '@/lib/api';
 import { BottomNav } from '@/components/loan-system/Navigation';
 import { DashboardView } from '@/components/loan-system/DashboardView';
@@ -36,8 +36,13 @@ function ErrorFallback({ error, reset }: { error: Error; reset: () => void }) {
 export default function Home() {
   const { currentView, user, isLoading, isAuthenticated, setUser } = useAppStore();
   const [error, setError] = useState<Error | null>(null);
+  const initialCheckDone = useRef(false);
 
   useEffect(() => {
+    // Only run the session check once on mount
+    if (initialCheckDone.current) return;
+    initialCheckDone.current = true;
+
     (async () => {
       try {
         const res = await apiFetch('/api/auth/me');
@@ -45,13 +50,21 @@ export default function Home() {
           const data = await res.json();
           setUser(data);
         } else {
-          setUser(null);
+          // Session not found or expired — only clear if not already authenticated
+          // (e.g. after a fresh login, don't overwrite the user)
+          const currentState = useAppStore.getState();
+          if (!currentState.isAuthenticated) {
+            setUser(null);
+          }
         }
       } catch {
-        setUser(null);
+        const currentState = useAppStore.getState();
+        if (!currentState.isAuthenticated) {
+          setUser(null);
+        }
       }
     })();
-  }, [setUser]);
+  }, []);
 
   // Show loading spinner
   if (isLoading) {

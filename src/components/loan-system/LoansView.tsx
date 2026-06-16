@@ -2,9 +2,10 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useAppStore } from '@/lib/store';
-import { apiFetch, apiPost, apiDelete } from '@/lib/api';
+import { apiFetch, apiPost, apiDelete, getApiError } from '@/lib/api';
 import { formatCurrency, formatDate, getStatusLabel, getStatusBgColor, formatPhone } from '@/lib/helpers';
 import { Plus, Search, FileText, Trash2, ChevronRight, User, Percent, Calendar, ArrowRight, ArrowLeftRight } from 'lucide-react';
+import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -144,15 +145,19 @@ export function LoansView() {
     if (!form.borrowerId || !P || !finalRate || !n || !form.startDate) return;
     setSubmitting(true);
     try {
-      await apiPost('/api/loans', {
+      const res = await apiPost('/api/loans', {
           borrowerId: form.borrowerId,
           originalAmount: P,
           interestRate: finalRate,
           installmentCount: n,
           startDate: form.startDate,
         });
+      const errMsg = await getApiError(res);
+      if (errMsg) { toast.error(errMsg); return; }
       setCreateOpen(false);
       triggerRefresh();
+    } catch {
+      toast.error('Erro de conexão com o servidor');
     } finally {
       setSubmitting(false);
     }
@@ -162,9 +167,13 @@ export function LoansView() {
     if (!selected) return;
     setSubmitting(true);
     try {
-      await apiDelete(`/api/loans/${selected.id}`);
+      const res = await apiDelete(`/api/loans/${selected.id}`);
+      const errMsg = await getApiError(res);
+      if (errMsg) { toast.error(errMsg); return; }
       setDeleteOpen(false);
       triggerRefresh();
+    } catch {
+      toast.error('Erro de conexão com o servidor');
     } finally {
       setSubmitting(false);
     }
