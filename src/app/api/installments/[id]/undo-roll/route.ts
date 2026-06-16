@@ -22,6 +22,16 @@ export async function POST(
       return NextResponse.json({ error: 'Parcela de juros não encontrada' }, { status: 404 });
     }
 
+    // Safeguard: only allow undo-roll if there's a duplicate installmentNumber (proof of a roll)
+    // Original installments never have duplicates — this prevents deleting original installments
+    const duplicateCount = interestInstallment.loan.installments.filter(
+      (inst) => inst.installmentNumber === interestInstallment.installmentNumber
+    ).length;
+
+    if (duplicateCount < 2) {
+      return NextResponse.json({ error: 'Esta não é uma parcela temporária de juros — não é possível desfazer rolê aqui' }, { status: 400 });
+    }
+
     // A parcela original empurrada deve ser a que tem installmentNumber = interestInstallment.installmentNumber + 1
     const nextInstallment = interestInstallment.loan.installments.find(
       (inst) => inst.installmentNumber === interestInstallment.installmentNumber + 1
@@ -32,16 +42,25 @@ export async function POST(
     }
 
     // 1. Restaurar a data e o installmentNumber da próxima parcela para o mês anterior
-    //    NÃO sobrescrever status/paidAmount/paidAt — manter o estado original da parcela
     const prevDueDate = new Date(nextInstallment.dueDate);
     prevDueDate.setMonth(prevDueDate.getMonth() - 1);
 
+    const restoreData: Record<string, unknown> = {
+      dueDate: prevDueDate,
+      installmentNumber: interestInstallment.installmentNumber,
+    };
+
+    // Se for um roll-remaining, a parcela original foi resetada para PENDING/paidAmount=0.
+    // Restaurar o paidAmount original a partir da parcela de juros.
+    if (nextInstallment.status === 'PENDING' && nextInstallment.paidAmount === 0 && interestInstallment.paidAmount > 0) {
+      restoreData.paidAmount = interestInstallment.paidAmount;
+      restoreData.status = 'PARTIAL';
+      restoreData.paidAt = interestInstallment.paidAt;
+    }
+
     await db.installment.update({
       where: { id: nextInstallment.id },
-      data: {
-        dueDate: prevDueDate,
-        installmentNumber: interestInstallment.installmentNumber,
-      },
+      data: restoreData,
     });
 
     // 2. Trazer as outras parcelas subsequentes de volta por 1 mês

@@ -165,13 +165,7 @@ export function LoanDetailView() {
         const errMsg = await getApiError(res);
         if (errMsg) throw new Error(errMsg);
       } else {
-        const hasRolled = data?.loan.installments.some(
-          (x) => x.installmentNumber === selectedInstallment.installmentNumber + 1
-        );
-        const endpoint = hasRolled
-          ? `/api/installments/${selectedInstallment.id}/undo-roll`
-          : `/api/installments/${selectedInstallment.id}/undo-payment`;
-        const res = await apiPost(endpoint, {});
+        const res = await apiPost(`/api/installments/${selectedInstallment.id}/undo-payment`, {});
         const errMsg = await getApiError(res);
         if (errMsg) throw new Error(errMsg);
       }
