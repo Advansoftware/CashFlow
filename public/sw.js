@@ -28,16 +28,25 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET' || url.origin !== self.location.origin) return;
 
   // Bypass Next.js internal requests to avoid infinite reload loop
-  if (url.pathname.startsWith('/_next/') || request.headers.get('RSC') === '1') {
+  const isNextInternal = 
+    url.pathname.startsWith('/_next/') || 
+    url.searchParams.has('_rsc') ||
+    request.headers.get('RSC') === '1' ||
+    request.headers.has('Next-Router-Prefetch') ||
+    request.headers.has('Next-Router-State-Tree');
+
+  if (isNextInternal) {
     return;
   }
 
-  // Network-first for API calls, cache-first for static assets
-  if (url.pathname.startsWith('/api/')) {
-    event.respondWith(
-      fetch(request).catch(() => caches.match(request))
-    );
-  } else {
+  // Check if it's a static asset (images, fonts, bundles, etc.)
+  const isStaticAsset = 
+    url.pathname.startsWith('/_next/static/') ||
+    url.pathname.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|otf|eot|webmanifest|json)$/) ||
+    STATIC_ASSETS.includes(url.pathname);
+
+  if (isStaticAsset) {
+    // Cache-first strategy for static assets
     event.respondWith(
       caches.match(request).then((cached) => {
         if (cached) return cached;
@@ -49,6 +58,23 @@ self.addEventListener('fetch', (event) => {
           return response;
         });
       })
+    );
+  } else {
+    // Network-first strategy for dynamic pages and APIs
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          // Cache successful same-origin responses, but not API requests
+          if (response.ok && response.type === 'basic' && !url.pathname.startsWith('/api/')) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          }
+          return response;
+        })
+        .catch(() => {
+          // Fallback to cache if network is unavailable
+          return caches.match(request);
+        })
     );
   }
 });
