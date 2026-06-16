@@ -27,6 +27,11 @@ self.addEventListener('fetch', (event) => {
   // Only cache same-origin GET requests
   if (request.method !== 'GET' || url.origin !== self.location.origin) return;
 
+  // Bypass Next.js internal requests to avoid infinite reload loop
+  if (url.pathname.startsWith('/_next/') || request.headers.get('RSC') === '1') {
+    return;
+  }
+
   // Network-first for API calls, cache-first for static assets
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(
