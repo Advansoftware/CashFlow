@@ -66,6 +66,7 @@ model Installment {
   status            String    @default("PENDING")
   paidAmount        Float     @default(0)
   paidAt            DateTime?
+  type              String    @default("ORIGINAL")
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
   partialPayments   PartialPayment[]

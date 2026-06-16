@@ -41,6 +41,7 @@ interface Installment {
   status: string;
   paidAmount: number;
   paidAt: string | null;
+  type: string;
 }
 
 interface PartialPayment {
@@ -162,6 +163,10 @@ export function LoanDetailView() {
       if (!selectedInstallment) return;
       if (undoPartialPaymentId) {
         const res = await apiDelete(`/api/installments/${selectedInstallment.id}/partial-payments/${undoPartialPaymentId}`);
+        const errMsg = await getApiError(res);
+        if (errMsg) throw new Error(errMsg);
+      } else if (selectedInstallment.type === 'INTEREST') {
+        const res = await apiPost(`/api/installments/${selectedInstallment.id}/undo-roll`, {});
         const errMsg = await getApiError(res);
         if (errMsg) throw new Error(errMsg);
       } else {

@@ -38,6 +38,7 @@ export async function POST(
         status: 'PAID',
         paidAmount: paidInterest,
         paidAt: installment.paidAt || new Date(),
+        type: 'INTEREST',
       },
     });
 
