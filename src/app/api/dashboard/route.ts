@@ -1,116 +1,101 @@
 import { db } from '@/lib/db';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { getSessionUserId } from '@/app/api/auth/login/route';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const userId = getSessionUserId(request);
+  if (!userId) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
+
   try {
     const now = new Date();
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
-    
-    // Start and end of current month
     const monthStart = new Date(currentYear, currentMonth, 1);
     const monthEnd = new Date(currentYear, currentMonth + 1, 0, 23, 59, 59);
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-    // All installments with relations
     const allInstallments = await db.installment.findMany({
-      include: {
-        loan: {
-          include: { borrower: true },
-        },
-      },
+      include: { loan: { include: { borrower: true } } },
       orderBy: { dueDate: 'asc' },
+      where: { loan: { userId } },
     });
 
-    // Update overdue statuses first
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    // Update overdue
     for (const inst of allInstallments) {
       if (inst.status === 'PENDING' && new Date(inst.dueDate) < todayStart) {
-        await db.installment.update({
-          where: { id: inst.id },
-          data: { status: 'OVERDUE' },
-        });
+        await db.installment.update({ where: { id: inst.id }, data: { status: 'OVERDUE' } });
         inst.status = 'OVERDUE';
       }
     }
 
-    // Monthly stats
-    const monthlyInstallments = allInstallments.filter((inst) => {
-      const due = new Date(inst.dueDate);
-      return due >= monthStart && due <= monthEnd;
+    const monthlyInsts = allInstallments.filter((i) => {
+      const d = new Date(i.dueDate);
+      return d >= monthStart && d <= monthEnd;
     });
 
-    const totalMonthly = monthlyInstallments.reduce((sum, inst) => sum + inst.amount, 0);
-    const receivedMonthly = monthlyInstallments
-      .filter((inst) => inst.status === 'PAID' || inst.status === 'PARTIAL')
-      .reduce((sum, inst) => sum + (inst.paidAmount || 0), 0);
+    const totalMonthly = monthlyInsts.reduce((s, i) => s + i.amount, 0);
+    const receivedMonthly = monthlyInsts
+      .filter((i) => i.status === 'PAID' || i.status === 'PARTIAL')
+      .reduce((s, i) => s + (i.paidAmount || 0), 0);
 
-    // Upcoming installments (next 15 days)
-    const fifteenDaysFromNow = new Date(now);
-    fifteenDaysFromNow.setDate(fifteenDaysFromNow.getDate() + 15);
+    const fifteenDays = new Date(now);
+    fifteenDays.setDate(fifteenDays.getDate() + 15);
 
-    const upcomingInstallments = allInstallments
-      .filter((inst) => {
-        if (inst.status === 'PAID') return false;
-        const due = new Date(inst.dueDate);
-        return due <= fifteenDaysFromNow && due >= todayStart;
+    const upcoming = allInstallments
+      .filter((i) => {
+        if (i.status === 'PAID') return false;
+        const d = new Date(i.dueDate);
+        return d <= fifteenDays && d >= todayStart;
       })
       .slice(0, 10)
-      .map((inst) => ({
-        id: inst.id,
-        installmentNumber: inst.installmentNumber,
-        dueDate: inst.dueDate,
-        amount: inst.amount,
-        status: inst.status,
-        paidAmount: inst.paidAmount,
-        borrowerName: inst.loan.borrower.name,
-        borrowerWhatsapp: inst.loan.borrower.whatsapp,
-        loanId: inst.loanId,
+      .map((i) => ({
+        id: i.id,
+        installmentNumber: i.installmentNumber,
+        dueDate: i.dueDate,
+        amount: i.amount,
+        status: i.status,
+        paidAmount: i.paidAmount,
+        borrowerName: i.loan.borrower.name,
+        borrowerWhatsapp: i.loan.borrower.whatsapp,
+        loanId: i.loanId,
       }));
 
-    // Overdue installments
-    const overdueInstallments = allInstallments
-      .filter((inst) => inst.status === 'OVERDUE')
+    const overdue = allInstallments
+      .filter((i) => i.status === 'OVERDUE')
       .slice(0, 10)
-      .map((inst) => ({
-        id: inst.id,
-        installmentNumber: inst.installmentNumber,
-        dueDate: inst.dueDate,
-        amount: inst.amount,
-        status: inst.status,
-        paidAmount: inst.paidAmount,
-        borrowerName: inst.loan.borrower.name,
-        borrowerWhatsapp: inst.loan.borrower.whatsapp,
-        loanId: inst.loanId,
+      .map((i) => ({
+        id: i.id,
+        installmentNumber: i.installmentNumber,
+        dueDate: i.dueDate,
+        amount: i.amount,
+        status: i.status,
+        paidAmount: i.paidAmount,
+        borrowerName: i.loan.borrower.name,
+        borrowerWhatsapp: i.loan.borrower.whatsapp,
+        loanId: i.loanId,
       }));
 
-    // Total active loans
-    const activeLoans = await db.loan.count({
-      where: { status: 'ACTIVE' },
-    });
-
-    // Total outstanding
+    const activeLoans = await db.loan.count({ where: { userId, status: 'ACTIVE' } });
     const totalOutstanding = allInstallments
-      .filter((inst) => inst.status === 'PENDING' || inst.status === 'OVERDUE')
-      .reduce((sum, inst) => sum + (inst.amount - (inst.paidAmount || 0)), 0);
+      .filter((i) => i.status === 'PENDING' || i.status === 'OVERDUE')
+      .reduce((s, i) => s + (i.amount - (i.paidAmount || 0)), 0);
 
-    // Recent loans
     const recentLoans = await db.loan.findMany({
       take: 5,
+      where: { userId },
       orderBy: { createdAt: 'desc' },
       include: {
         borrower: true,
-        _count: {
-          select: { installments: true },
-        },
+        _count: { select: { installments: true } },
       },
     });
 
     return NextResponse.json({
       totalMonthly: Math.round(totalMonthly * 100) / 100,
       receivedMonthly: Math.round(receivedMonthly * 100) / 100,
-      upcomingInstallments,
-      overdueInstallments,
-      overdueCount: overdueInstallments.length,
+      upcomingInstallments: upcoming,
+      overdueInstallments: overdue,
+      overdueCount: overdue.length,
       activeLoans,
       totalOutstanding: Math.round(totalOutstanding * 100) / 100,
       recentLoans,

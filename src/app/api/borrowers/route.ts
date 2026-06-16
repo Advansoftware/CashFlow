@@ -1,14 +1,17 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
+import { getSessionUserId } from '@/app/api/auth/login/route';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const userId = getSessionUserId(request);
+  if (!userId) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
+
   try {
     const borrowers = await db.borrower.findMany({
+      where: { userId },
       orderBy: { createdAt: 'desc' },
       include: {
-        _count: {
-          select: { loans: true },
-        },
+        _count: { select: { loans: true } },
       },
     });
     return NextResponse.json(borrowers);
@@ -18,6 +21,9 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const userId = getSessionUserId(request);
+  if (!userId) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
+
   try {
     const body = await request.json();
     const { name, whatsapp, notes } = body;
@@ -31,6 +37,7 @@ export async function POST(request: NextRequest) {
         name,
         whatsapp: whatsapp.replace(/\D/g, ''),
         notes: notes || null,
+        userId,
       },
     });
 

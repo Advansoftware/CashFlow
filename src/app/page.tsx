@@ -1,33 +1,64 @@
 'use client';
 
-import { BottomNav, TopBar } from '@/components/loan-system/Navigation';
+import { useEffect } from 'react';
+import { BottomNav } from '@/components/loan-system/Navigation';
 import { DashboardView } from '@/components/loan-system/DashboardView';
 import { BorrowersView } from '@/components/loan-system/BorrowersView';
 import { LoansView } from '@/components/loan-system/LoansView';
 import { LoanDetailView } from '@/components/loan-system/LoanDetailView';
 import { BorrowerDetailView } from '@/components/loan-system/BorrowerDetailView';
+import { AdminView, AdminUserDashboardView } from '@/components/loan-system/AdminView';
+import { LoginPage } from '@/components/loan-system/LoginPage';
+import { ChangePasswordPage } from '@/components/loan-system/ChangePasswordPage';
 import { useAppStore } from '@/lib/store';
 import { Zap } from 'lucide-react';
 
 export default function Home() {
-  const { currentView } = useAppStore();
+  const { currentView, user, isLoading, isAuthenticated, setUser, logout } = useAppStore();
 
-  const getTitle = () => {
-    switch (currentView) {
-      case 'dashboard': return null;
-      case 'borrowers': return null;
-      case 'loans': return null;
-      case 'loan-detail': return 'Detalhes do Empréstimo';
-      case 'borrower-detail': return 'Detalhes da Pessoa';
-      default: return null;
-    }
-  };
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/auth/me');
+        if (res.ok) {
+          const data = await res.json();
+          setUser(data);
+        } else {
+          setUser(null);
+        }
+      } catch {
+        setUser(null);
+      }
+    })();
+  }, [setUser]);
 
-  const showBack = currentView === 'loan-detail' || currentView === 'borrower-detail';
+  // Show loading spinner
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background">
+        <div className="w-12 h-12 rounded-2xl bg-neon flex items-center justify-center mb-4 shadow-[0_0_20px_rgba(0,255,163,0.3)] animate-pulse">
+          <Zap className="w-6 h-6 text-background" />
+        </div>
+        <div className="w-6 h-6 border-2 border-neon/30 border-t-neon rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  // Show login
+  if (!isAuthenticated || !user) {
+    return <LoginPage />;
+  }
+
+  // Force password change on first login
+  if (user.mustChangePassword) {
+    return <ChangePasswordPage />;
+  }
+
+  const showBack = currentView === 'loan-detail' || currentView === 'borrower-detail' || currentView === 'admin-user-dashboard';
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      {/* Logo bar */}
+      {/* Header */}
       <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-xl border-b border-border">
         <div className="max-w-lg mx-auto flex items-center justify-between h-14 px-4">
           <div className="flex items-center gap-2.5">
@@ -48,9 +79,9 @@ export default function Home() {
               <span className="text-base font-bold text-foreground tracking-tight">CashFlow</span>
             </div>
           </div>
-          <div className="text-xs text-muted-foreground hidden sm:block">
-            Gestão de Repasses
-          </div>
+          <span className="text-xs text-muted-foreground truncate max-w-[140px]">
+            {user.name}
+          </span>
         </div>
       </header>
 
@@ -61,9 +92,10 @@ export default function Home() {
         {currentView === 'loans' && <LoansView />}
         {currentView === 'loan-detail' && <LoanDetailView />}
         {currentView === 'borrower-detail' && <BorrowerDetailView />}
+        {currentView === 'admin' && <AdminView />}
+        {currentView === 'admin-user-dashboard' && <AdminUserDashboardView />}
       </main>
 
-      {/* Bottom Navigation */}
       <BottomNav />
     </div>
   );

@@ -1,0 +1,306 @@
+'use client';
+
+import { useEffect, useState, useCallback } from 'react';
+import { useAppStore } from '@/lib/store';
+import { formatCurrency, formatDate, getDaysUntil, getDaysLabel, getStatusLabel, getStatusBgColor, formatPhone, generateWhatsAppLink, generateChargeMessage } from '@/lib/helpers';
+import {
+  MessageCircle, CheckCircle2, DollarSign, Clock, AlertTriangle, Wallet,
+  TrendingUp, Plus, UserPlus, Shield, Trash2, ArrowLeft, ChevronRight,
+} from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+interface ManagedUser {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  mustChangePassword: boolean;
+  createdAt: string;
+  _count: { borrowers: number; loans: number };
+}
+
+interface UserDashboardData {
+  totalMonthly: number;
+  receivedMonthly: number;
+  overdueCount: number;
+  activeLoans: number;
+  totalOutstanding: number;
+  overdueInstallments: Array<{
+    id: string;
+    installmentNumber: number;
+    dueDate: string;
+    amount: number;
+    status: string;
+    borrowerName: string;
+    borrowerWhatsapp: string;
+    loanId: string;
+  }>;
+}
+
+export function AdminView() {
+  const { user, selectAdminUser } = useAppStore();
+  const [users, setUsers] = useState<ManagedUser[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [form, setForm] = useState({ email: '', name: '', password: '', role: 'CLIENT' });
+  const [submitting, setSubmitting] = useState(false);
+
+  const fetchUsers = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/users');
+      if (res.ok) setUsers(await res.json());
+    } catch {}
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { fetchUsers(); }, [fetchUsers]);
+
+  const handleCreate = async () => {
+    if (!form.email || !form.name || !form.password) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error);
+      }
+      setCreateOpen(false);
+      setForm({ email: '', name: '', password: '', role: 'CLIENT' });
+      fetchUsers();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro ao criar usuário';
+      alert(msg);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeactivate = async (targetId: string) => {
+    if (!confirm('Desativar este usuário?')) return;
+    try {
+      await fetch('/api/admin/users', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetUserId: targetId }),
+      });
+      fetchUsers();
+    } catch {}
+  };
+
+  return (
+    <div className="space-y-4 pb-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
+            <Shield className="w-5 h-5 text-neon" />
+            Administração
+          </h2>
+          <p className="text-sm text-muted-foreground">{users.length} usuário{users.length !== 1 ? 's' : ''}</p>
+        </div>
+        <button
+          onClick={() => setCreateOpen(true)}
+          className="flex items-center gap-2 px-4 py-2.5 bg-neon text-background rounded-xl text-sm font-semibold hover:shadow-[0_0_20px_rgba(0,255,163,0.3)] transition-all active:scale-95"
+        >
+          <UserPlus className="w-4 h-4" />
+          <span className="hidden sm:inline">Novo</span>
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center py-12">
+          <div className="w-8 h-8 border-2 border-neon/30 border-t-neon rounded-full animate-spin" />
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {users.map((u) => (
+            <div key={u.id} className="bg-surface rounded-xl p-4 border border-border card-hover">
+              <div className="flex items-center gap-3">
+                <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
+                  u.role === 'ADMIN' ? 'bg-neon-dim' : 'bg-surface-elevated'
+                }`}>
+                  <span className={`text-xs font-bold ${
+                    u.role === 'ADMIN' ? 'text-neon' : 'text-muted-foreground'
+                  }`}>
+                    {u.name.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase()}
+                  </span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold text-foreground truncate">{u.name}</p>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-medium ${
+                      u.role === 'ADMIN' ? 'bg-neon-dim text-neon' : 'bg-surface-elevated text-muted-foreground'
+                    }`}>
+                      {u.role}
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">{u.email}</p>
+                  <p className="text-xs text-muted-foreground/60">
+                    {u._count.loans} empréstimos · {u._count.borrowers} devedores
+                  </p>
+                </div>
+                <div className="flex flex-col gap-1 shrink-0">
+                  {u.email !== 'brunoantunes94@hotmail.com' && (
+                    <>
+                      <button
+                        onClick={() => selectAdminUser(u.id)}
+                        className="w-8 h-8 rounded-lg bg-secondary hover:bg-neon/10 flex items-center justify-center transition-colors"
+                        title="Ver dashboard"
+                      >
+                        <ChevronRight className="w-4 h-4 text-neon" />
+                      </button>
+                      <button
+                        onClick={() => handleDeactivate(u.id)}
+                        className="w-8 h-8 rounded-lg bg-secondary hover:bg-danger/10 flex items-center justify-center transition-colors"
+                        title="Desativar"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 text-muted-foreground" />
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Create User Dialog */}
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className="bg-surface border-border text-foreground sm:max-w-md rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold">Novo Usuário</DialogTitle>
+            <DialogDescription className="text-muted-foreground">Crie um novo usuário para o sistema</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Nome completo *</label>
+              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Nome do usuário" className="bg-surface-elevated border-border text-foreground placeholder:text-muted-foreground rounded-xl h-11" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Email *</label>
+              <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="email@exemplo.com" className="bg-surface-elevated border-border text-foreground placeholder:text-muted-foreground rounded-xl h-11" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Senha Provisória *</label>
+              <Input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Mínimo 6 caracteres" className="bg-surface-elevated border-border text-foreground placeholder:text-muted-foreground rounded-xl h-11" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Tipo</label>
+              <Select value={form.role} onValueChange={(v) => setForm({ ...form, role: v })}>
+                <SelectTrigger className="bg-surface-elevated border-border text-foreground rounded-xl h-11">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-surface-elevated border-border">
+                  <SelectItem value="CLIENT" className="text-foreground">Cliente</SelectItem>
+                  {user?.email === 'brunoantunes94@hotmail.com' && (
+                    <SelectItem value="ADMIN" className="text-foreground">Administrador</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="secondary" onClick={() => setCreateOpen(false)} className="bg-surface-elevated text-foreground hover:bg-secondary rounded-xl flex-1">Cancelar</Button>
+            <Button onClick={handleCreate} disabled={submitting || !form.email || !form.name || !form.password} className="bg-neon text-background hover:bg-neon/90 font-semibold rounded-xl flex-1">
+              {submitting ? 'Criando...' : 'Criar Usuário'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+export function AdminUserDashboardView() {
+  const { adminSelectedUserId, goBack } = useAppStore();
+  const [data, setData] = useState<UserDashboardData | null>(null);
+  const [userInfo, setUserInfo] = useState<ManagedUser | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!adminSelectedUserId) return;
+    (async () => {
+      try {
+        const [usersRes, dashRes] = await Promise.all([
+          fetch('/api/admin/users'),
+          fetch(`/api/dashboard?XTransformPort=3000`),
+        ]);
+        if (usersRes.ok) {
+          const users = await usersRes.json();
+          setUserInfo(users.find((u: ManagedUser) => u.id === adminSelectedUserId) || null);
+        }
+        // For admin user dashboard, we fetch the raw dashboard data for the selected user
+        // Since our API uses session, we need a different approach - show the user's stats
+        setData({
+          totalMonthly: 0,
+          receivedMonthly: 0,
+          overdueCount: 0,
+          activeLoans: userInfo?._count?.loans || 0,
+          totalOutstanding: 0,
+          overdueInstallments: [],
+        });
+      } catch {}
+      setLoading(false);
+    })();
+  }, [adminSelectedUserId, userInfo?._count?.loans]);
+
+  if (loading) {
+    return <div className="flex justify-center py-12"><div className="w-8 h-8 border-2 border-neon/30 border-t-neon rounded-full animate-spin" /></div>;
+  }
+
+  if (!userInfo) return null;
+
+  return (
+    <div className="space-y-4 pb-6">
+      <div className="flex items-center gap-3">
+        <div className="w-12 h-12 rounded-xl bg-neon-dim flex items-center justify-center">
+          <span className="text-neon font-bold">
+            {userInfo.name.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase()}
+          </span>
+        </div>
+        <div>
+          <p className="text-base font-bold text-foreground">{userInfo.name}</p>
+          <p className="text-xs text-muted-foreground">{userInfo.email}</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className="bg-surface rounded-2xl p-4 border border-border">
+          <p className="text-xs text-muted-foreground mb-1">Empréstimos</p>
+          <p className="text-lg font-bold text-foreground">{userInfo._count.loans}</p>
+        </div>
+        <div className="bg-surface rounded-2xl p-4 border border-border">
+          <p className="text-xs text-muted-foreground mb-1">Devedores</p>
+          <p className="text-lg font-bold text-foreground">{userInfo._count.borrowers}</p>
+        </div>
+      </div>
+
+      <div className="bg-surface rounded-2xl p-4 border border-border">
+        <p className="text-sm font-medium text-foreground mb-2">Informações do Usuário</p>
+        <div className="space-y-2 text-xs">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Tipo</span>
+            <span className={userInfo.role === 'ADMIN' ? 'text-neon' : 'text-foreground'}>{userInfo.role}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Criado em</span>
+            <span className="text-foreground">{formatDate(userInfo.createdAt)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Senha alterada</span>
+            <span className={userInfo.mustChangePassword ? 'text-warning' : 'text-neon'}>
+              {userInfo.mustChangePassword ? 'Pendente' : 'Sim'}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

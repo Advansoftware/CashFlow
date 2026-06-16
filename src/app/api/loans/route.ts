@@ -1,15 +1,18 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
+import { getSessionUserId } from '@/app/api/auth/login/route';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const userId = getSessionUserId(request);
+  if (!userId) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
+
   try {
     const loans = await db.loan.findMany({
+      where: { userId },
       orderBy: { createdAt: 'desc' },
       include: {
         borrower: true,
-        installments: {
-          orderBy: { installmentNumber: 'asc' },
-        },
+        installments: { orderBy: { installmentNumber: 'asc' } },
       },
     });
     return NextResponse.json(loans);
@@ -19,6 +22,9 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const userId = getSessionUserId(request);
+  if (!userId) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
+
   try {
     const body = await request.json();
     const { borrowerId, originalAmount, interestRate, installmentCount, startDate } = body;
@@ -27,14 +33,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Todos os campos são obrigatórios' }, { status: 400 });
     }
 
-    // Calculate total with compound interest (Price table - fixed installments)
+    // Verify borrower belongs to user
+    const borrower = await db.borrower.findFirst({ where: { id: borrowerId, userId } });
+    if (!borrower) {
+      return NextResponse.json({ error: 'Devedor não encontrado' }, { status: 404 });
+    }
+
+    // Price table calculation
     const monthlyRate = interestRate / 100;
     const totalAmount = originalAmount * monthlyRate * Math.pow(1 + monthlyRate, installmentCount) / (Math.pow(1 + monthlyRate, installmentCount) - 1) * installmentCount;
-    
-    // Fixed installment value
     const installmentValue = totalAmount / installmentCount;
 
-    // Generate installments
     const start = new Date(startDate);
     const installmentsData = [];
     for (let i = 1; i <= installmentCount; i++) {
@@ -50,6 +59,7 @@ export async function POST(request: NextRequest) {
 
     const loan = await db.loan.create({
       data: {
+        userId,
         borrowerId,
         originalAmount,
         interestRate,
@@ -57,15 +67,11 @@ export async function POST(request: NextRequest) {
         installmentCount,
         startDate: new Date(startDate),
         status: 'ACTIVE',
-        installments: {
-          create: installmentsData,
-        },
+        installments: { create: installmentsData },
       },
       include: {
         borrower: true,
-        installments: {
-          orderBy: { installmentNumber: 'asc' },
-        },
+        installments: { orderBy: { installmentNumber: 'asc' } },
       },
     });
 
