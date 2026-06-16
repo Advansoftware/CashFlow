@@ -36,6 +36,7 @@ interface DashboardData {
     id: string;
     originalAmount: number;
     totalAmount: number;
+    remainingAmount: number;
     status: string;
     createdAt: string;
     borrower: { name: string; whatsapp: string };
@@ -50,7 +51,7 @@ import { Wallet, TrendingUp, AlertTriangle, Clock, ArrowRight, MessageCircle, Do
 export function DashboardView() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
-  const { selectLoan, selectBorrower, refreshKey } = useAppStore();
+  const { selectLoan, selectBorrower, refreshKey, setLoansFilter, setView } = useAppStore();
 
   const fetchDashboard = useCallback(async () => {
     try {
@@ -105,7 +106,7 @@ export function DashboardView() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-        <div className="bg-surface rounded-2xl p-4 border border-border card-hover">
+        <div onClick={() => { setLoansFilter('ACTIVE'); setView('loans'); }} className="bg-surface rounded-2xl p-4 border border-border card-hover cursor-pointer active:scale-[0.98] transition-all">
           <div className="flex items-center gap-2 mb-2">
             <div className="w-8 h-8 rounded-lg bg-neon-dim flex items-center justify-center">
               <Wallet className="w-4 h-4 text-neon" />
@@ -115,7 +116,7 @@ export function DashboardView() {
           <p className="text-lg font-bold text-foreground">{formatCurrency(data.totalMonthlyPending)}</p>
         </div>
 
-        <div className="bg-surface rounded-2xl p-4 border border-border card-hover">
+        <div onClick={() => { setLoansFilter('ALL'); setView('loans'); }} className="bg-surface rounded-2xl p-4 border border-border card-hover cursor-pointer active:scale-[0.98] transition-all">
           <div className="flex items-center gap-2 mb-2">
             <div className="w-8 h-8 rounded-lg bg-neon-dim flex items-center justify-center">
               <TrendingUp className="w-4 h-4 text-neon" />
@@ -125,7 +126,7 @@ export function DashboardView() {
           <p className="text-lg font-bold text-neon">{formatCurrency(data.receivedMonthly)}</p>
         </div>
 
-        <div className="bg-surface rounded-2xl p-4 border border-border card-hover">
+        <div onClick={() => { setLoansFilter('OVERDUE'); setView('loans'); }} className="bg-surface rounded-2xl p-4 border border-border card-hover cursor-pointer active:scale-[0.98] transition-all">
           <div className="flex items-center gap-2 mb-2">
             <div className="w-8 h-8 rounded-lg bg-danger/10 flex items-center justify-center">
               <AlertTriangle className="w-4 h-4 text-danger" />
@@ -135,7 +136,7 @@ export function DashboardView() {
           <p className="text-lg font-bold text-danger">{data.overdueCount}</p>
         </div>
 
-        <div className="bg-surface rounded-2xl p-4 border border-border card-hover">
+        <div onClick={() => { setLoansFilter('ACTIVE'); setView('loans'); }} className="bg-surface rounded-2xl p-4 border border-border card-hover cursor-pointer active:scale-[0.98] transition-all">
           <div className="flex items-center gap-2 mb-2">
             <div className="w-8 h-8 rounded-lg bg-surface-elevated flex items-center justify-center">
               <DollarSign className="w-4 h-4 text-foreground" />
@@ -293,8 +294,9 @@ export function DashboardView() {
                         </p>
                       </div>
                       <div className="text-right ml-3">
-                        <p className="text-sm font-bold text-foreground">{formatCurrency(loan.totalAmount)}</p>
-                        <p className={`text-xs font-medium ${loan.status === 'ACTIVE' ? 'text-neon' : 'text-muted-foreground'}`}>
+                        <p className="text-xs text-muted-foreground">Restante</p>
+                        <p className="text-sm font-bold text-foreground">{formatCurrency(loan.remainingAmount)}</p>
+                        <p className={`text-xs font-medium mt-0.5 ${loan.status === 'ACTIVE' ? 'text-neon' : 'text-muted-foreground'}`}>
                           {loan.status === 'ACTIVE' ? 'Ativo' : 'Finalizado'}
                         </p>
                       </div>

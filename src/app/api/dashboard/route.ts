@@ -89,14 +89,30 @@ export async function GET(request: NextRequest) {
       .filter((i) => i.status !== 'PAID')
       .reduce((s, i) => s + (i.amount - (i.paidAmount || 0)), 0);
 
-    const recentLoans = await db.loan.findMany({
+    const recentLoansRaw = await db.loan.findMany({
       take: 5,
       where: { userId },
       orderBy: { createdAt: 'desc' },
       include: {
         borrower: true,
-        _count: { select: { installments: true } },
+        installments: true,
       },
+    });
+
+    const recentLoans = recentLoansRaw.map((loan) => {
+      const dynamicTotal = loan.installments.reduce((sum, i) => sum + i.amount, 0);
+      const paidAmount = loan.installments.reduce((sum, i) => sum + (i.paidAmount || 0), 0);
+      const remainingAmount = dynamicTotal - paidAmount;
+      return {
+        id: loan.id,
+        originalAmount: loan.originalAmount,
+        totalAmount: Math.round(dynamicTotal * 100) / 100,
+        remainingAmount: Math.round(remainingAmount * 100) / 100,
+        status: loan.status,
+        createdAt: loan.createdAt.toISOString(),
+        borrower: { name: loan.borrower.name, whatsapp: loan.borrower.whatsapp },
+        _count: { installments: loan.installments.length }
+      };
     });
 
     return NextResponse.json({

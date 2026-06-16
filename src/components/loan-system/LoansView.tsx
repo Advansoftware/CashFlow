@@ -44,7 +44,7 @@ export function LoansView() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [selected, setSelected] = useState<Loan | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const { selectLoan, refreshKey, triggerRefresh } = useAppStore();
+  const { selectLoan, refreshKey, triggerRefresh, loansFilter, setLoansFilter } = useAppStore();
 
   const fetchData = useCallback(async () => {
     try {
@@ -68,7 +68,21 @@ export function LoansView() {
     return () => clearTimeout(timer);
   }, [fetchData, refreshKey]);
 
-  const filtered = loans.filter((l) => l.borrower.name.toLowerCase().includes(search.toLowerCase()));
+  const filtered = loans.filter((l) => {
+    const matchesName = l.borrower.name.toLowerCase().includes(search.toLowerCase());
+    if (!matchesName) return false;
+
+    if (loansFilter === 'ACTIVE') {
+      return l.status === 'ACTIVE';
+    }
+    if (loansFilter === 'OVERDUE') {
+      return l.status === 'ACTIVE' && l.installments.some((i) => i.status === 'OVERDUE');
+    }
+    if (loansFilter === 'FINALIZED') {
+      return l.status !== 'ACTIVE';
+    }
+    return true;
+  });
 
   const openCreate = () => {
     setCreateOpen(true);
@@ -113,9 +127,22 @@ export function LoansView() {
         </button>
       </div>
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input placeholder="Buscar por nome..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10 bg-surface border-border text-foreground placeholder:text-muted-foreground rounded-xl h-11" />
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input placeholder="Buscar por nome..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10 bg-surface border-border text-foreground placeholder:text-muted-foreground rounded-xl h-11" />
+        </div>
+        <Select value={loansFilter} onValueChange={setLoansFilter}>
+          <SelectTrigger className="w-full sm:w-56 bg-surface border-border text-foreground rounded-xl h-11">
+            <SelectValue placeholder="Filtrar por status" />
+          </SelectTrigger>
+          <SelectContent className="bg-surface border-border text-foreground rounded-xl">
+            <SelectItem value="ALL">Todos os contratos</SelectItem>
+            <SelectItem value="ACTIVE">Contratos Ativos</SelectItem>
+            <SelectItem value="OVERDUE">Contratos Atrasados</SelectItem>
+            <SelectItem value="FINALIZED">Contratos Finalizados</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {loading ? (

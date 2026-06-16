@@ -26,6 +26,8 @@ interface AppState {
   selectedBorrowerId: string | null;
   adminSelectedUserId: string | null;
   refreshKey: number;
+  loansFilter: string;
+  setLoansFilter: (filter: string) => void;
   setView: (view: View) => void;
   selectLoan: (id: string) => void;
   selectBorrower: (id: string) => void;
@@ -80,6 +82,8 @@ export const useAppStore = create<AppState>((set) => ({
   selectedBorrowerId: null,
   adminSelectedUserId: null,
   refreshKey: 0,
+  loansFilter: 'ALL',
+  setLoansFilter: (filter) => set({ loansFilter: filter }),
   setView: (view) => set({ currentView: view, selectedLoanId: null, selectedBorrowerId: null, adminSelectedUserId: null }),
   selectLoan: (id) => set({ currentView: 'loan-detail', selectedLoanId: id }),
   selectBorrower: (id) => set({ currentView: 'borrower-detail', selectedBorrowerId: id }),
