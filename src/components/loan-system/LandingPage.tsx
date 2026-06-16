@@ -119,7 +119,59 @@ export function LandingPage({ onEnterApp }: LandingPageProps) {
         return;
       }
 
-      // 2. Perform automatic login
+      const signupData = await signupRes.json();
+
+      // If email already exists, skip login and proceed directly
+      if (signupData.exists) {
+        // Try to login with provided credentials
+        const loginRes = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: regEmail.trim().toLowerCase(),
+            password: regPassword
+          })
+        });
+
+        if (!loginRes.ok) {
+          toast.error('Este email já possui cadastro. Tente fazer login com sua senha.');
+          setLoading(false);
+          handleCloseCheckout();
+          return;
+        }
+
+        const loginData = await loginRes.json();
+        useAppStore.getState().setUser(loginData.user, loginData.token);
+
+        // Check subscription status
+        if (loginData.user.subscriptionStatus === 'active') {
+          toast.success('Bem-vindo de volta!');
+          return;
+        }
+
+        // Subscription not active - go to payment
+        setCheckoutStep('PROCESSING');
+        const token = loginData.token;
+        const checkoutRes = await fetch('/api/stripe/checkout', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        if (!checkoutRes.ok) {
+          toast.error('Erro ao iniciar checkout');
+          setLoading(false);
+          return;
+        }
+
+        const { url } = await checkoutRes.json();
+        window.location.href = url;
+        return;
+      }
+
+      // 2. Perform automatic login for new accounts
       const loginRes = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

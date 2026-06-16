@@ -14,9 +14,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'A senha deve ter no mínimo 6 caracteres' }, { status: 400 });
     }
 
-    const existing = await db.systemUser.findUnique({ where: { email } });
+    const existing = await db.systemUser.findUnique({
+      where: { email },
+      select: { id: true, email: true, name: true, role: true, subscriptionStatus: true, isActive: true },
+    });
     if (existing) {
-      return NextResponse.json({ error: 'Este email já está cadastrado' }, { status: 409 });
+      return NextResponse.json({ exists: true, user: existing }, { status: 200 });
     }
 
     const hash = await bcrypt.hash(password, 12);
