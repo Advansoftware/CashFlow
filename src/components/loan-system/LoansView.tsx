@@ -137,7 +137,7 @@ export function LoansView() {
       finalTotal = calc.total;
     } else {
       finalTotal = totalInput;
-      finalRate = calcRateFromRate(P, totalInput, n);
+      finalRate = calcRateFromTotal(P, totalInput, n);
     }
 
     if (!form.borrowerId || !P || !finalRate || !n || !form.startDate) return;

@@ -74,7 +74,19 @@ export function DashboardView() {
     );
   }
 
-  if (!data) return null;
+  if (!data) {
+    return (
+      <div className="text-center py-12 space-y-4">
+        <div className="w-16 h-16 rounded-2xl bg-surface-elevated flex items-center justify-center mx-auto">
+          <Wallet className="w-8 h-8 text-muted-foreground" />
+        </div>
+        <div>
+          <p className="text-sm font-medium text-foreground">Erro ao carregar dados</p>
+          <p className="text-xs text-muted-foreground mt-1">Tente recarregar a página</p>
+        </div>
+      </div>
+    );
+  }
 
   const progressPercent = data.totalMonthly > 0 ? (data.receivedMonthly / data.totalMonthly) * 100 : 0;
 

@@ -1,4 +1,4 @@
-import type { Metadata, Viewport } from "next";
+import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
@@ -13,14 +13,6 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const viewport: Viewport = {
-  width: "device-width",
-  initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
-  themeColor: "#00FFA3",
-};
-
 export const metadata: Metadata = {
   title: "CashFlow — Gestão de Repasses",
   description: "Sistema de gestão de repasses de empréstimos. Controle financeiro pessoal premium.",
@@ -34,11 +26,6 @@ export const metadata: Metadata = {
       { url: "/icon-192.png" },
     ],
   },
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "black-translucent",
-    title: "CashFlow",
-  },
 };
 
 export default function RootLayout({
@@ -49,24 +36,15 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" className="dark" suppressHydrationWarning>
       <head>
-        <link rel="apple-touch-icon" href="/icon-192.png" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+        <meta name="theme-color" content="#00FFA3" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <link rel="apple-touch-icon" href="/icon-192.png" />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              if ('serviceWorker' in navigator) {
-                window.addEventListener('load', () => {
-                  navigator.serviceWorker.register('/sw.js');
-                });
-              }
-            `,
-          }}
-        />
         {children}
         <Toaster
           position="top-center"

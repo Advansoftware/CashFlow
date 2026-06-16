@@ -2,10 +2,9 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useAppStore } from '@/lib/store';
-import { formatCurrency, formatDate, getDaysUntil, getDaysLabel, getStatusLabel, getStatusBgColor, formatPhone, generateWhatsAppLink, generateChargeMessage } from '@/lib/helpers';
+import { formatDate } from '@/lib/helpers';
 import {
-  MessageCircle, CheckCircle2, DollarSign, Clock, AlertTriangle, Wallet,
-  TrendingUp, Plus, UserPlus, Shield, Trash2, ArrowLeft, ChevronRight,
+  Plus, UserPlus, Shield, Trash2, ChevronRight,
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -20,24 +19,6 @@ interface ManagedUser {
   mustChangePassword: boolean;
   createdAt: string;
   _count: { borrowers: number; loans: number };
-}
-
-interface UserDashboardData {
-  totalMonthly: number;
-  receivedMonthly: number;
-  overdueCount: number;
-  activeLoans: number;
-  totalOutstanding: number;
-  overdueInstallments: Array<{
-    id: string;
-    installmentNumber: number;
-    dueDate: string;
-    amount: number;
-    status: string;
-    borrowerName: string;
-    borrowerWhatsapp: string;
-    loanId: string;
-  }>;
 }
 
 export function AdminView() {
@@ -219,43 +200,37 @@ export function AdminView() {
 }
 
 export function AdminUserDashboardView() {
-  const { adminSelectedUserId, goBack } = useAppStore();
-  const [data, setData] = useState<UserDashboardData | null>(null);
+  const { adminSelectedUserId } = useAppStore();
   const [userInfo, setUserInfo] = useState<ManagedUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!adminSelectedUserId) return;
+    let cancelled = false;
     (async () => {
       try {
-        const [usersRes, dashRes] = await Promise.all([
-          fetch('/api/admin/users'),
-          fetch(`/api/dashboard?XTransformPort=3000`),
-        ]);
-        if (usersRes.ok) {
+        const usersRes = await fetch('/api/admin/users');
+        if (usersRes.ok && !cancelled) {
           const users = await usersRes.json();
           setUserInfo(users.find((u: ManagedUser) => u.id === adminSelectedUserId) || null);
         }
-        // For admin user dashboard, we fetch the raw dashboard data for the selected user
-        // Since our API uses session, we need a different approach - show the user's stats
-        setData({
-          totalMonthly: 0,
-          receivedMonthly: 0,
-          overdueCount: 0,
-          activeLoans: userInfo?._count?.loans || 0,
-          totalOutstanding: 0,
-          overdueInstallments: [],
-        });
       } catch {}
-      setLoading(false);
+      if (!cancelled) setLoading(false);
     })();
-  }, [adminSelectedUserId, userInfo?._count?.loans]);
+    return () => { cancelled = true; };
+  }, [adminSelectedUserId]);
 
   if (loading) {
     return <div className="flex justify-center py-12"><div className="w-8 h-8 border-2 border-neon/30 border-t-neon rounded-full animate-spin" /></div>;
   }
 
-  if (!userInfo) return null;
+  if (!userInfo) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-sm text-muted-foreground">Usuário não encontrado</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 pb-6">
