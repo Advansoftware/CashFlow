@@ -1,53 +1,48 @@
-// Session store using globalThis to survive HMR in dev mode
-interface SessionData {
-  userId: string;
-  expires: number;
-}
+import crypto from 'crypto';
 
-function getSessionStore(): Map<string, SessionData> {
-  const g = globalThis as Record<string, unknown>;
-  if (!g.__cf_sessions) {
-    g.__cf_sessions = new Map<string, SessionData>();
-  }
-  return g.__cf_sessions as Map<string, SessionData>;
-}
+const SECRET = process.env.SESSION_SECRET || 'cashflow-super-secret-key-12345';
 
 export function createSession(userId: string): string {
-  const bytes = new Uint8Array(32);
-  crypto.getRandomValues(bytes);
-  const token = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
-  getSessionStore().set(token, {
-    userId,
-    expires: Date.now() + 30 * 24 * 60 * 60 * 1000,
-  });
-  return token;
+  const expires = Date.now() + 30 * 24 * 60 * 60 * 1000;
+  const payload = JSON.stringify({ userId, expires });
+  const b64Payload = Buffer.from(payload).toString('base64url');
+  const hmac = crypto.createHmac('sha256', SECRET).update(b64Payload).digest('base64url');
+  return `${b64Payload}.${hmac}`;
 }
 
 export function getSessionUserId(request: Request): string | null {
-  const sessions = getSessionStore();
+  let token: string | null = null;
 
   // Try Authorization header first (most reliable across proxies)
   const authHeader = request.headers.get('authorization');
   if (authHeader && authHeader.startsWith('Bearer ')) {
-    const token = authHeader.slice(7);
-    const session = sessions.get(token);
-    if (session && Date.now() <= session.expires) {
-      return session.userId;
-    }
-    if (session) sessions.delete(token);
+    token = authHeader.slice(7);
   }
 
   // Fallback to cookie
-  const cookieHeader = request.headers.get('cookie') || '';
-  const match = cookieHeader.match(/cf_session=([^;]+)/);
-  if (match) {
-    const token = match[1];
-    const session = sessions.get(token);
-    if (session && Date.now() <= session.expires) {
-      return session.userId;
+  if (!token) {
+    const cookieHeader = request.headers.get('cookie') || '';
+    const match = cookieHeader.match(/cf_session=([^;]+)/);
+    if (match) {
+      token = match[1];
     }
-    if (session) sessions.delete(token);
   }
 
-  return null;
+  if (!token) return null;
+
+  const parts = token.split('.');
+  if (parts.length !== 2) return null;
+
+  const [b64Payload, signature] = parts;
+  const expectedSignature = crypto.createHmac('sha256', SECRET).update(b64Payload).digest('base64url');
+  
+  if (signature !== expectedSignature) return null;
+  
+  try {
+    const payload = JSON.parse(Buffer.from(b64Payload, 'base64url').toString('utf-8'));
+    if (Date.now() > payload.expires) return null;
+    return payload.userId;
+  } catch {
+    return null;
+  }
 }

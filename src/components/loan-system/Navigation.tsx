@@ -19,7 +19,7 @@ const tabs = [
 
 export function BottomNav() {
   const { currentView, setView, user, logout } = useAppStore();
-  const showNav = ['dashboard', 'borrowers', 'loans', 'admin'].includes(currentView);
+  const showNav = ['dashboard', 'borrowers', 'loans', 'admin', 'admin-user-dashboard'].includes(currentView);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [passwordOpen, setPasswordOpen] = useState(false);
   const [currentPwd, setCurrentPwd] = useState('');
